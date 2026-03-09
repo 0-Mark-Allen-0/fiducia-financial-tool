@@ -1,0 +1,91 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Inter', sans-serif;
+  --color-brand-blue: #007aff;
+  --color-brand-green: #34c759;
+  --color-brand-purple: #af52de;
+  --color-brand-orange: #ff9500;
+  --color-brand-danger: #ff3b30;
+}
+
+:root {
+  /* BACKGROUNDS */
+  --bg-gradient: linear-gradient(135deg, #f0f2f5 0%, #e2e8f0 100%);
+  --bg-gradient-dark: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+  
+  /* TEXT COLORS (Hardcoded for safety) */
+  --text-main: #0f172a; /* Black/Dark Blue */
+  --text-muted: #64748b; /* Medium Gray */
+}
+
+/* Dark Mode Variables */
+.dark {
+  --text-main: #f8fafc; /* White */
+  --text-muted: #94a3b8; /* Light Gray */
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--text-main); /* Force Default Color */
+  min-height: 100vh;
+  margin: 0;
+  width: 100%;
+}
+
+.dark body {
+  background: var(--bg-gradient-dark);
+}
+
+/* --- UTILITIES --- */
+
+@utility glass-card {
+  @apply backdrop-blur-xl border shadow-lg rounded-[24px] transition-all duration-200;
+  
+  /* LIGHT MODE */
+  background: rgba(255, 255, 255, 0.9); 
+  border-color: rgba(255, 255, 255, 0.6);
+  color: var(--text-main); /* Force Black Text */
+}
+
+.dark .glass-card {
+  /* DARK MODE */
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  color: var(--text-main); /* Force White Text */
+}
+
+@utility input-field {
+  @apply w-full px-4 py-3 rounded-xl border outline-none transition-all font-medium;
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a; /* Force Black Input Text */
+}
+
+.input-field:focus {
+  @apply ring-2 ring-brand-blue/50 border-brand-blue;
+}
+
+.dark .input-field {
+  @apply bg-black/20 border-white/10 placeholder-slate-400;
+  color: #ffffff; /* Force White Input Text */
+}
+
+.dark .input-field:focus {
+  @apply ring-brand-blue/50 bg-black/40;
+}
+
+@utility btn-primary {
+  @apply w-full bg-slate-900 text-white font-semibold py-4 px-6 rounded-xl hover:bg-black active:scale-95 transition-all cursor-pointer;
+}
+
+.dark .btn-primary {
+  @apply bg-white text-slate-900 hover:bg-slate-200;
+}
