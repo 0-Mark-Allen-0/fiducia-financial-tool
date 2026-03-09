@@ -1,4 +1,5 @@
 import { formatUnit } from '../../utils/format';
+import { Info } from 'lucide-react';
 
 export function InputGroup({ 
   label, 
@@ -9,24 +10,38 @@ export function InputGroup({
   step = "1",
   tooltip = null 
 }) {
+  // CHANGED: Use abbreviation (15k) instead of full number (15,000)
+  const formattedValue = value > 0 ? formatUnit(value) : '';
+
   return (
-    <div className="flex flex-col gap-1.5"> {/* Increased gap slightly */}
-      <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
-        {label}
-      </label>
+    <div className="flex flex-col gap-1.5">
+      <div className="flex justify-between items-center">
+        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+          {label}
+        </label>
+        
+        {/* Optional Info Icon */}
+        {tooltip && (
+          <div className="group relative cursor-help">
+             <Info size={12} className="text-slate-400" />
+             <div className="absolute right-0 bottom-full mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded-lg shadow-xl hidden group-hover:block z-50">
+               {tooltip}
+             </div>
+          </div>
+        )}
+      </div>
       
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
         step={step}
-        title={tooltip}
-        className="input-field font-medium" // Added font-medium for better readability
+        className="input-field font-medium"
       />
 
       {isCurrency && (
-        <span className="text-[10px] font-bold text-brand-blue dark:text-brand-green h-3">
-          {value > 0 ? `(${formatUnit(value)})` : ''}
+        <span className="text-[10px] font-medium text-brand-blue dark:text-brand-green h-3 block">
+          {formattedValue ? `(${formattedValue})` : ''}
         </span>
       )}
     </div>

@@ -44,18 +44,32 @@ export function ResultsSection() {
 
   // 1. SALARY TABLE
   if (activeTab === 'salary') {
-    const headers = ["Year", "Gross Salary (Monthly)", "Post-Tax (Yearly)", "Total Investments", "Disposable Income (Yearly)", "Disposable (I-A)"];
+    const headers = [
+      "Year", 
+      "Gross Salary (Monthly)", 
+      "Post-Tax (Yearly)", 
+      "Total Investments", 
+      "Disposable (Yearly)", 
+      "Disposable (I-A)"
+    ];
     
     return (
       <div className="w-full">
         <Tabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
         <Table 
           title="Salary & Disposable Income Analysis" 
-          subTitle="Red highlights indicate negative cash flow (investing more than you earn)."
+          subTitle="Breakdown of earnings, taxes, and purchasing power."
           headers={headers}
           onExport={() => exportCSV('Salary_Projection', headers, dashboardData.netWorthSeries.map((d, i) => {
              const sal = dashboardData.salarySeries[i];
-             return [d.year, sal.monthlyGross, sal.netYearly, (sal.netYearly - d.disposableNominal), d.disposableNominal, d.disposableReal];
+             return [
+               d.year, 
+               sal.monthlyGross, 
+               sal.netYearly, 
+               (sal.netYearly - d.disposableNominal), 
+               d.disposableNominal, 
+               d.disposableReal
+             ];
           }))}
         >
           {dashboardData.netWorthSeries.map((d, i) => {
@@ -65,20 +79,41 @@ export function ResultsSection() {
             return (
               <tr key={d.year} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                 <td className="px-6 py-4 font-medium text-slate-500">{d.year}</td>
-                <td className="px-6 py-4 font-medium">{formatCurrency(sal.monthlyGross)}</td>
-                <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{formatCurrency(sal.netYearly)}</td>
-                <td className="px-6 py-4 text-brand-orange">{formatCurrency(investmentAmount)}</td>
+                
+                {/* Gross Salary: Monthly Nominal + Real */}
+                <td className="px-6 py-4 font-medium">
+                   <div>{formatCurrency(sal.monthlyGross)}</div>
+                   <div className="text-xs text-slate-400">Real: {formatCurrency(sal.monthlyGrossReal)}</div>
+                </td>
+                
+                {/* Post Tax: Yearly Nominal + Real */}
+                <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
+                    <div>{formatCurrency(sal.netYearly)}</div>
+                    <div className="text-xs text-slate-400">Real: {formatCurrency(sal.netYearlyReal)}</div>
+                </td>
+
+                {/* Investments: Yearly Total + Monthly Avg */}
+                <td className="px-6 py-4 text-brand-orange">
+                    <div>{formatCurrency(investmentAmount)}</div>
+                    <div className="text-xs opacity-70">Mo: {formatCurrency(investmentAmount / 12)}</div>
+                </td>
+
+                {/* Disposable: Yearly Nominal + Monthly Avg */}
                 <td className={clsx(
                   "px-6 py-4 font-bold",
                   d.isNegative ? "text-brand-danger bg-brand-danger/10" : "text-brand-green"
                 )}>
-                  {formatCurrency(d.disposableNominal)}
+                  <div>{formatCurrency(d.disposableNominal)}</div>
+                  <div className="text-xs opacity-70 font-normal">Mo: {formatCurrency(d.disposableNominal / 12)}</div>
                 </td>
+
+                {/* Disposable I-A: Yearly Real + Monthly Real */}
                 <td className={clsx(
                     "px-6 py-4",
                     d.isNegative ? "text-brand-danger" : "text-brand-green/70"
                 )}>
-                    {formatCurrency(d.disposableReal)}
+                    <div>{formatCurrency(d.disposableReal)}</div>
+                    <div className="text-xs opacity-70">Mo: {formatCurrency(d.disposableReal / 12)}</div>
                 </td>
               </tr>
             );
@@ -90,7 +125,8 @@ export function ResultsSection() {
 
   // 2. NET WORTH TABLE
   if (activeTab === 'networth') {
-    const headers = ["Year", "Net Worth (Nominal)", "Net Worth (Real)", "Growth Rate"];
+    // Removed "Growth Rate" as requested
+    const headers = ["Year", "Net Worth (Nominal)", "Net Worth (Real)"];
     
     return (
       <div className="w-full">
@@ -112,7 +148,6 @@ export function ResultsSection() {
                 {formatCurrency(d.netWorthReal)}
                 <span className="text-xs font-normal text-brand-green/60 ml-2">{formatUnit(d.netWorthReal)}</span>
               </td>
-              <td className="px-6 py-4 text-slate-400">-</td>
             </tr>
           ))}
         </Table>
@@ -121,10 +156,9 @@ export function ResultsSection() {
   }
 
   // 3. SIP / SAVINGS / EPF / VPF (Generic Logic)
-  // We map the active tab to the correct data source
   let currentSeries = [];
   let title = "";
-  let colorClass = ""; // For styling specific columns
+  let colorClass = "";
 
   if (activeTab === 'sip') {
     currentSeries = dashboardData.sipSeries;
@@ -160,13 +194,19 @@ export function ResultsSection() {
         {currentSeries.map((d) => (
           <tr key={d.year} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
             <td className="px-6 py-4 font-medium text-slate-500">{d.year}</td>
+            
+            {/* Monthly Contribution: Nominal + Real */}
             <td className="px-6 py-4">
                 <div className="font-medium">{formatCurrency(d.monthlyNominal)}</div>
                 <div className="text-xs text-slate-400">Real: {formatCurrency(d.monthlyReal)}</div>
             </td>
+
+            {/* Yearly Contribution: Nominal + Real (Added Real as requested) */}
             <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
-                {formatCurrency(d.yearlyNominal)}
+                <div>{formatCurrency(d.yearlyNominal)}</div>
+                <div className="text-xs text-slate-400">Real: {formatCurrency(d.yearlyReal)}</div>
             </td>
+
             <td className={clsx("px-6 py-4 font-bold", colorClass)}>
                 {formatCurrency(d.corpusNominal)}
                 <span className="text-xs font-normal text-slate-400 ml-1">{formatUnit(d.corpusNominal)}</span>

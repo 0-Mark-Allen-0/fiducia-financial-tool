@@ -2,6 +2,7 @@ import { useFinancialData } from '../../../context/FinancialContext';
 import { InputGroup } from '../../shared/InputGroup';
 import { ResultRow } from '../../shared/ResultRow';
 import { Building2, Wallet, Info } from 'lucide-react';
+import { formatUnit } from '../../../utils/format';
 
 export function EPFCard() {
   const { epfInput, setEpfInput, dashboardData, isProMode } = useFinancialData();
@@ -11,6 +12,23 @@ export function EPFCard() {
   const series = dashboardData.epfSeries || [];
   const finalData = series[series.length - 1] || {};
   const totalValue = finalData.corpusNominal || 0;
+
+  // --- REUSABLE TOOLTIP COMPONENT ---
+  const GrossSalaryTooltip = (
+    <div className="absolute right-0 bottom-full mb-2 w-64 p-3 bg-slate-800 text-white text-[10px] rounded-lg shadow-xl hidden group-hover:block z-50 leading-relaxed border border-slate-600">
+        <strong className="text-brand-blue block mb-1">Convert CTC to Gross:</strong>
+        <div className="space-y-1 mb-2">
+            <p className="opacity-80">Start: Monthly Fixed Pay (CTC / 12)</p>
+            <p className="text-red-300">- Employer PF (12% of Basic)</p>
+            <p className="text-red-300">- Gratuity (If not notional)</p>
+            <div className="border-t border-white/20 my-1"></div>
+            <p className="font-bold text-green-300">= GROSS SALARY (Enter This)</p>
+        </div>
+        <p className="italic opacity-70 mt-2">
+            * We remove Gratuity/Employer PF here because they are not part of your monthly paycheck.
+        </p>
+    </div>
+  );
 
   // --- SIMPLE MODE RENDER ---
   if (!isProMode) {
@@ -25,27 +43,26 @@ export function EPFCard() {
 
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="col-span-2">
-              {/* UPDATED LABEL FOR CLARITY */}
-              <div className="flex justify-between items-center mb-1">
-                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                    Monthly Gross Salary
-                </label>
-                <div className="group relative">
-                    <Info size={14} className="text-slate-400 cursor-help" />
-                    <div className="absolute right-0 bottom-full mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded-lg shadow-xl hidden group-hover:block z-50">
-                        Enter your Earnings <strong>before</strong> tax/PF deductions. Do not enter CTC.
+              <div className="flex flex-col gap-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                        Monthly Gross Salary
+                    </label>
+                    <div className="group relative">
+                        <Info size={14} className="text-slate-400 cursor-help" />
+                        {GrossSalaryTooltip}
                     </div>
-                </div>
+                  </div>
+                  <input
+                    type="number"
+                    value={epfInput.salary}
+                    onChange={(e) => update('salary', parseFloat(e.target.value) || 0)}
+                    className="input-field font-medium"
+                  />
+                  <span className="text-[10px] font-medium text-brand-blue dark:text-brand-green h-3 block">
+                      {epfInput.salary > 0 ? `(${formatUnit(epfInput.salary)})` : ''}
+                  </span>
               </div>
-              <input
-                type="number"
-                value={epfInput.salary}
-                onChange={(e) => update('salary', parseFloat(e.target.value) || 0)}
-                className="input-field"
-              />
-              <span className="text-[10px] font-medium text-brand-blue dark:text-brand-green h-3 block mt-1">
-                  {epfInput.salary > 0 ? `(${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(epfInput.salary)})` : ''}
-              </span>
           </div>
           
           <InputGroup label="Annual Hike (%)" value={epfInput.hike} onChange={(v) => update('hike', v)} />
@@ -57,11 +74,11 @@ export function EPFCard() {
            <ul className="text-[10px] text-slate-500 space-y-1">
              <li className="flex gap-2">
                 <span className="text-red-500 font-bold">- 12%</span> 
-                <span>Employee Share (Deducted from hand)</span>
+                <span>Employee Share (We deduct this)</span>
              </li>
              <li className="flex gap-2">
                 <span className="text-green-500 font-bold">+ 12%</span> 
-                <span>Employer Share (Added to Corpus only)</span>
+                <span>Employer Share (Added to Corpus)</span>
              </li>
            </ul>
         </div>
@@ -69,7 +86,7 @@ export function EPFCard() {
     );
   }
 
-  // --- PRO MODE RENDER (Unchanged logic, just keeping the file complete) ---
+  // --- PRO MODE RENDER ---
   return (
     <div className="glass-card p-6 flex flex-col h-full">
       <div className="flex items-center gap-3 mb-6">
@@ -81,7 +98,27 @@ export function EPFCard() {
 
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="col-span-2">
-            <InputGroup label="Monthly Salary (Gross ₹)" value={epfInput.salary} onChange={(v) => update('salary', v)} isCurrency />
+            {/* UPDATED: Manual Input Block with Tooltip for Pro Mode */}
+            <div className="flex flex-col gap-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                        Monthly Gross Salary
+                    </label>
+                    <div className="group relative">
+                        <Info size={14} className="text-slate-400 cursor-help" />
+                        {GrossSalaryTooltip}
+                    </div>
+                  </div>
+                  <input
+                    type="number"
+                    value={epfInput.salary}
+                    onChange={(e) => update('salary', parseFloat(e.target.value) || 0)}
+                    className="input-field font-medium"
+                  />
+                  <span className="text-[10px] font-medium text-brand-blue dark:text-brand-green h-3 block">
+                      {epfInput.salary > 0 ? `(${formatUnit(epfInput.salary)})` : ''}
+                  </span>
+            </div>
         </div>
         <InputGroup label="Basic Pay (%)" value={epfInput.basicPercent} onChange={(v) => update('basicPercent', v)} />
         <InputGroup label="Hike (%)" value={epfInput.hike} onChange={(v) => update('hike', v)} />

@@ -107,6 +107,9 @@ export function InfoModal({ isOpen, onClose }) {
                     <p>
                         <strong>3. Tax Regime:</strong> Pro Mode estimates tax liability based on current New Regime slabs. It is an approximation, not a CA-certified filing.
                     </p>
+                    <p>
+                        <strong>4. Salary Growth:</strong> In real life, career growth is not linear, neither is it predictable. Fiducia allows you to enter a fixed percentage that can be representative of your career growth, even if it is not exactly accurate. This was a necessary step to avoid further convolution in simulating finances.
+                    </p>
                 </div>
             </section>
 

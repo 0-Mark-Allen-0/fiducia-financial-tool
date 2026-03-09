@@ -36,7 +36,7 @@ export function SWPTable() {
       <div className="p-6 border-b border-black/5 dark:border-white/5 flex flex-wrap gap-4 justify-between items-center bg-white/40 dark:bg-black/20">
         <div>
             <h3 className="text-lg font-bold text-slate-800 dark:text-white">Withdrawal Projection</h3>
-            <p className="text-xs text-slate-500">* Tax = Estimated LTCG | Real = Inflation Adjusted</p>
+            <p className="text-xs text-slate-500">* Tax = Estimated LTCG | (I-A) = Inflation Adjusted</p>
         </div>
         <button 
             onClick={downloadCSV}

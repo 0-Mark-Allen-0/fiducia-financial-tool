@@ -37,8 +37,17 @@ export function SWPCard() {
         <InputGroup label="Return (%)" value={swpInput.returnRate} onChange={(v) => update('returnRate', v)} step="0.1" />
         <InputGroup label="Inflation (%)" value={swpInput.inflation} onChange={(v) => update('inflation', v)} step="0.1" />
         
+        {/* NEW FIELD: Withdrawal Duration */}
         <div className="col-span-2">
-            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+            <InputGroup 
+                label="Withdrawal Duration (Yrs)" 
+                value={swpInput.horizon} 
+                onChange={(v) => update('horizon', v)} 
+            />
+        </div>
+        
+        <div className="col-span-2">
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
                 Withdrawal Strategy
             </label>
             <select 
