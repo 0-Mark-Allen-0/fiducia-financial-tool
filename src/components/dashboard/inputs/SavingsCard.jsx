@@ -4,11 +4,13 @@ import { ResultRow } from '../../shared/ResultRow';
 import { Landmark, CornerDownRight } from 'lucide-react';
 
 export function SavingsCard() {
-  const { savInput, setSavInput, dashboardData, isProMode, vpfInput } = useFinancialData();
+  // NEW: Extracted masterHorizon from context
+  const { savInput, setSavInput, dashboardData, isProMode, vpfInput, masterHorizon } = useFinancialData();
 
   const update = (field, val) => setSavInput(prev => ({ ...prev, [field]: val }));
 
   const series = dashboardData.savSeries || [];
+  // Final data is taken at the end of the Master Horizon
   const finalData = series[series.length - 1] || {};
   const totalValue = finalData.corpusNominal || 0;
 
@@ -39,7 +41,15 @@ export function SavingsCard() {
         </div>
         <InputGroup label="Step-up (%)" value={savInput.stepUp} onChange={(v) => update('stepUp', v)} />
         <InputGroup label="Return (%)" value={savInput.returnRate} onChange={(v) => update('returnRate', v)} step="0.1" />
-        <InputGroup label="Horizon (Yrs)" value={savInput.horizon} onChange={(v) => update('horizon', v)} />
+        
+        {/* NEW: Passed min and max guardrails */}
+        <InputGroup 
+            label="Horizon (Yrs)" 
+            value={savInput.horizon} 
+            onChange={(v) => update('horizon', v)} 
+            min={1} 
+            max={masterHorizon} 
+        />
       </div>
 
       <div className="mt-auto bg-slate-50/50 dark:bg-black/20 p-4 rounded-xl">

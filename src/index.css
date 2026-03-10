@@ -89,3 +89,30 @@ body {
 .dark .btn-primary {
   @apply bg-white text-slate-900 hover:bg-slate-200;
 }
+
+/* --- CUSTOM RANGE SLIDER --- */
+.custom-range {
+  @apply w-full h-2 bg-slate-200 dark:bg-white/10 rounded-lg appearance-none cursor-pointer outline-none transition-all;
+}
+
+.custom-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-brand-blue);
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 122, 255, 0.4);
+  transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  border: 3px solid white;
+}
+
+.dark .custom-range::-webkit-slider-thumb {
+  border-color: #0f172a;
+}
+
+.custom-range::-webkit-slider-thumb:hover, 
+.custom-range:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+  box-shadow: 0 0 15px rgba(0, 122, 255, 0.6);
+}

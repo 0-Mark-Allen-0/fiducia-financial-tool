@@ -13,10 +13,10 @@ export const formatCurrency = (num) => {
 };
 
 /**
- * Converts large numbers into short Indian units (Lakhs/Crores)
+ * Converts large numbers into short Indian units (Lakhs/Crores/Thousands)
  * @param {number} num - The amount to format
  * @param {boolean} fullSuffix - If true, returns "Lakhs/Crores", else "L/Cr"
- * @returns {string} - e.g., "1.50 Cr" or "1.50 Crores"
+ * @returns {string} - e.g., "1.50 Cr", "1.50 L", or "75 K"
  */
 export const formatUnit = (num, fullSuffix = false) => {
   if (num === null || num === undefined || isNaN(num)) return "";
@@ -29,6 +29,13 @@ export const formatUnit = (num, fullSuffix = false) => {
   
   if (absNum >= 100000) {
     return `${(num / 100000).toFixed(2)} ${fullSuffix ? 'Lakhs' : 'L'}`;
+  }
+
+  if (absNum >= 1000) {
+    const val = num / 1000;
+    // If it's a whole number (75), show "75 K". If it has decimals (75.5), show "75.50 K"
+    const displayVal = Number.isInteger(val) ? val : val.toFixed(2);
+    return `${displayVal} ${fullSuffix ? 'Thousands' : 'K'}`;
   }
 
   return "";

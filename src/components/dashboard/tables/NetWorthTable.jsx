@@ -1,25 +1,39 @@
 import { useFinancialData } from '../../../context/FinancialContext';
 import { formatCurrency, formatUnit, cleanForCSV } from '../../../utils/format';
 import { Download } from 'lucide-react';
+import { clsx } from 'clsx'; // Added clsx for conditional cell styling
 
 export function NetWorthTable() {
   const { dashboardData } = useFinancialData();
-  const { series } = dashboardData;
+  const { netWorthSeries, sipSeries, savSeries, epfSeries } = dashboardData;
 
   const downloadCSV = () => {
-    const headers = ["Year", "SIP (Nominal)", "SIP (Real)", "Savings (Nominal)", "Savings (Real)", "EPF (Nominal)", "EPF (Real)", "Net Worth (Nominal)", "Net Worth (Real)"];
+    const headers = [
+      "Year", 
+      "SIP (Nominal)", "SIP (Real)", 
+      "Savings (Nominal)", "Savings (Real)", 
+      "EPF (Nominal)", "EPF (Real)", 
+      "Net Worth (Nominal)", "Net Worth (Real)"
+    ];
     
-    const rows = series.map(d => [
-      d.year,
-      cleanForCSV(d.sip.investedNominal), // Just an example of what to export, usually we export Values not Flow
-      cleanForCSV(d.sip.valueReal),
-      cleanForCSV(d.sav.valueNominal),
-      cleanForCSV(d.sav.valueReal),
-      cleanForCSV(d.epf.valueNominal),
-      cleanForCSV(d.epf.valueReal),
-      cleanForCSV(d.total.nominal),
-      cleanForCSV(d.total.real)
-    ]);
+    // Fixed the data mapping to match our modern Context structure
+    const rows = netWorthSeries.map((d, i) => {
+      const sip = sipSeries[i] || {};
+      const sav = savSeries[i] || {};
+      const epf = epfSeries[i] || {};
+
+      return [
+        d.year,
+        cleanForCSV(sip.corpusNominal || 0), 
+        cleanForCSV(sip.corpusReal || 0),
+        cleanForCSV(sav.corpusNominal || 0),
+        cleanForCSV(sav.corpusReal || 0),
+        cleanForCSV(epf.corpusNominal || 0),
+        cleanForCSV(epf.corpusReal || 0),
+        cleanForCSV(d.netWorthNominal || 0),
+        cleanForCSV(d.netWorthReal || 0)
+      ];
+    });
 
     const csvContent = [
       headers.join(","),
@@ -62,39 +76,77 @@ export function NetWorthTable() {
             </tr>
           </thead>
           <tbody className="divide-y divide-black/5 dark:divide-white/5">
-            {series.map((row) => (
-              <tr key={row.year} className="hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
-                <td className="px-6 py-3 font-medium text-slate-500">{row.year}</td>
-                
-                <td className="px-6 py-3">
-                    <div>{formatCurrency(row.sip.valueNominal)}</div>
-                    <div className="text-xs text-slate-400">{formatUnit(row.sip.valueNominal)}</div>
-                </td>
-                
-                <td className="px-6 py-3 text-brand-purple/80">
-                    <div>{formatCurrency(row.sip.valueReal)}</div>
-                </td>
+            {netWorthSeries.map((row, i) => {
+              // Extract individual engine rows for this specific year
+              const sipItem = sipSeries[i] || {};
+              const savItem = savSeries[i] || {};
+              const epfItem = epfSeries[i] || {};
 
-                <td className="px-6 py-3 hidden md:table-cell text-slate-500">
-                    {formatCurrency(row.sav.valueNominal)}
-                </td>
+              return (
+                <tr key={row.year} className="hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
+                  <td className="px-6 py-3 font-medium text-slate-500">{row.year}</td>
+                  
+                  {/* SIP NOMINAL CELL (Cell-Specific Dimming) */}
+                  <td className={clsx("px-6 py-3 transition-all", sipItem.isActive ? "" : "opacity-60 bg-slate-50/50 dark:bg-white/[0.02]")}>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div>{formatCurrency(sipItem.corpusNominal || 0)}</div>
+                          <div className="text-xs text-slate-400">{formatUnit(sipItem.corpusNominal || 0)}</div>
+                        </div>
+                        {!sipItem.isActive && (
+                          <span className="text-[9px] font-bold uppercase bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">
+                            Passive
+                          </span>
+                        )}
+                      </div>
+                  </td>
+                  
+                  {/* SIP REAL CELL */}
+                  <td className={clsx("px-6 py-3 text-brand-purple/80 transition-all", sipItem.isActive ? "" : "opacity-60 bg-slate-50/50 dark:bg-white/[0.02]")}>
+                      <div>{formatCurrency(sipItem.corpusReal || 0)}</div>
+                  </td>
 
-                <td className="px-6 py-3">
-                    <div>{formatCurrency(row.epf.valueNominal)}</div>
-                    <div className="text-xs text-slate-400">{formatUnit(row.epf.valueNominal)}</div>
-                </td>
+                  {/* SAVINGS NOMINAL CELL */}
+                  <td className={clsx("px-6 py-3 hidden md:table-cell transition-all text-slate-500", savItem.isActive ? "" : "opacity-60 bg-slate-50/50 dark:bg-white/[0.02]")}>
+                      <div className="flex items-center gap-2">
+                        {formatCurrency(savItem.corpusNominal || 0)}
+                        {!savItem.isActive && (
+                          <span className="text-[9px] font-bold uppercase bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">
+                            Passive
+                          </span>
+                        )}
+                      </div>
+                  </td>
 
-                <td className="px-6 py-3 font-bold text-slate-900 dark:text-white bg-slate-50/30 dark:bg-white/5">
-                    <div>{formatCurrency(row.total.nominal)}</div>
-                    <div className="text-xs text-slate-500 font-normal">{formatUnit(row.total.nominal)}</div>
-                </td>
+                  {/* EPF NOMINAL CELL */}
+                  <td className={clsx("px-6 py-3 transition-all", epfItem.isActive ? "" : "opacity-60 bg-slate-50/50 dark:bg-white/[0.02]")}>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div>{formatCurrency(epfItem.corpusNominal || 0)}</div>
+                          <div className="text-xs text-slate-400">{formatUnit(epfItem.corpusNominal || 0)}</div>
+                        </div>
+                        {!epfItem.isActive && (
+                          <span className="text-[9px] font-bold uppercase bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">
+                            Passive
+                          </span>
+                        )}
+                      </div>
+                  </td>
 
-                <td className="px-6 py-3 font-bold text-brand-green bg-brand-green/5">
-                    <div>{formatCurrency(row.total.real)}</div>
-                    <div className="text-xs opacity-70 font-normal">{formatUnit(row.total.real)}</div>
-                </td>
-              </tr>
-            ))}
+                  {/* NET WORTH NOMINAL (Always Active) */}
+                  <td className="px-6 py-3 font-bold text-slate-900 dark:text-white bg-slate-50/30 dark:bg-white/5">
+                      <div>{formatCurrency(row.netWorthNominal)}</div>
+                      <div className="text-xs text-slate-500 font-normal">{formatUnit(row.netWorthNominal)}</div>
+                  </td>
+
+                  {/* NET WORTH REAL (Always Active) */}
+                  <td className="px-6 py-3 font-bold text-brand-green bg-brand-green/5">
+                      <div>{formatCurrency(row.netWorthReal)}</div>
+                      <div className="text-xs opacity-70 font-normal">{formatUnit(row.netWorthReal)}</div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

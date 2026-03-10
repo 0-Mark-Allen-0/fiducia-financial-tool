@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useFinancialData } from '../../../context/FinancialContext';
 import { formatCurrency, formatUnit, cleanForCSV } from '../../../utils/format';
 import { Table } from '../../shared/Table';
 import { Tabs } from '../../shared/Tabs';
 import { clsx } from 'clsx';
+import { PauseCircle } from 'lucide-react'; // NEW: Icon for the transition row
 
 export function ResultsSection() {
   const { dashboardData, isProMode } = useFinancialData();
@@ -12,18 +13,18 @@ export function ResultsSection() {
   // --- TAB CONFIGURATION ---
   const TABS = isProMode 
     ? [
-        { id: 'salary', label: 'Salary & Cash Flow' },
-        { id: 'networth', label: 'Net Worth' },
+        { id: 'salary', label: 'Salary Preview' },
         { id: 'sip', label: 'SIP Portfolio' },
-        { id: 'sav', label: 'Savings/FD' },
-        { id: 'epf', label: 'EPF Ledger' },
-        { id: 'vpf', label: 'VPF Ledger' },
+        { id: 'sav', label: 'Savings' },
+        { id: 'epf', label: 'EPF' },
+        { id: 'vpf', label: 'VPF' },
+        { id: 'networth', label: 'Net Worth' },
       ]
     : [
         { id: 'salary', label: 'Salary Preview' },
-        { id: 'networth', label: 'Net Worth' },
         { id: 'sip', label: 'SIP Portfolio' },
         { id: 'sav', label: 'Savings' },
+        { id: 'networth', label: 'Net Worth' },
       ];
 
   // --- GENERIC EXPORT FUNCTION ---
@@ -75,6 +76,7 @@ export function ResultsSection() {
           {dashboardData.netWorthSeries.map((d, i) => {
             const sal = dashboardData.salarySeries[i];
             const investmentAmount = sal.netYearly - d.disposableNominal;
+            const isInvesting = Math.round(investmentAmount) > 0;
 
             return (
               <tr key={d.year} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
@@ -93,7 +95,8 @@ export function ResultsSection() {
                 </td>
 
                 {/* Investments: Yearly Total + Monthly Avg */}
-                <td className="px-6 py-4 text-brand-orange">
+                {/* NEW: Dims out if no active investments exist this year */}
+                <td className={clsx("px-6 py-4 transition-all", isInvesting ? "text-brand-orange" : "text-slate-400 opacity-50")}>
                     <div>{formatCurrency(investmentAmount)}</div>
                     <div className="text-xs opacity-70">Mo: {formatCurrency(investmentAmount / 12)}</div>
                 </td>
@@ -125,7 +128,6 @@ export function ResultsSection() {
 
   // 2. NET WORTH TABLE
   if (activeTab === 'networth') {
-    // Removed "Growth Rate" as requested
     const headers = ["Year", "Net Worth (Nominal)", "Net Worth (Real)"];
     
     return (
@@ -191,31 +193,67 @@ export function ResultsSection() {
             d.year, d.monthlyNominal, d.yearlyNominal, d.corpusNominal, d.corpusReal
         ]))}
       >
-        {currentSeries.map((d) => (
-          <tr key={d.year} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-            <td className="px-6 py-4 font-medium text-slate-500">{d.year}</td>
-            
-            {/* Monthly Contribution: Nominal + Real */}
-            <td className="px-6 py-4">
-                <div className="font-medium">{formatCurrency(d.monthlyNominal)}</div>
-                <div className="text-xs text-slate-400">Real: {formatCurrency(d.monthlyReal)}</div>
-            </td>
+        {currentSeries.map((d, index) => {
+          // NEW: Detect the exact moment contributions stop to render the separator
+          const isTransitionRow = !d.isActive && index > 0 && currentSeries[index - 1].isActive;
 
-            {/* Yearly Contribution: Nominal + Real (Added Real as requested) */}
-            <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
-                <div>{formatCurrency(d.yearlyNominal)}</div>
-                <div className="text-xs text-slate-400">Real: {formatCurrency(d.yearlyReal)}</div>
-            </td>
+          return (
+            <React.Fragment key={d.year}>
+              
+              {/* THE HORIZON LINE SEPARATOR */}
+              {isTransitionRow && (
+                <tr>
+                  <td colSpan={5} className="bg-brand-blue/5 dark:bg-brand-blue/10 px-6 py-3 border-y border-brand-blue/20">
+                    <div className="flex items-center justify-center gap-2 text-xs font-bold text-brand-blue uppercase tracking-wider">
+                      <PauseCircle size={14} />
+                      Contributions Stopped — Passive Compounding Phase
+                    </div>
+                  </td>
+                </tr>
+              )}
 
-            <td className={clsx("px-6 py-4 font-bold", colorClass)}>
-                {formatCurrency(d.corpusNominal)}
-                <span className="text-xs font-normal text-slate-400 ml-1">{formatUnit(d.corpusNominal)}</span>
-            </td>
-            <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
-                {formatCurrency(d.corpusReal)}
-            </td>
-          </tr>
-        ))}
+              {/* THE DATA ROW (Dims out if inactive) */}
+              <tr className={clsx(
+                "transition-colors",
+                d.isActive 
+                  ? "hover:bg-black/5 dark:hover:bg-white/5" 
+                  : "opacity-60 bg-slate-50/50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+              )}>
+                <td className="px-6 py-4 font-medium text-slate-500">
+                  <div className="flex items-center gap-2">
+                    {d.year}
+                    {/* PASSIVE BADGE */}
+                    {!d.isActive && (
+                      <span className="text-[9px] font-bold uppercase bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">
+                        Passive
+                      </span>
+                    )}
+                  </div>
+                </td>
+                
+                {/* Monthly Contribution */}
+                <td className="px-6 py-4">
+                    <div className="font-medium">{formatCurrency(d.monthlyNominal)}</div>
+                    <div className="text-xs text-slate-400">Real: {formatCurrency(d.monthlyReal)}</div>
+                </td>
+
+                {/* Yearly Contribution */}
+                <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
+                    <div>{formatCurrency(d.yearlyNominal)}</div>
+                    <div className="text-xs text-slate-400">Real: {formatCurrency(d.yearlyReal)}</div>
+                </td>
+
+                <td className={clsx("px-6 py-4 font-bold", colorClass)}>
+                    {formatCurrency(d.corpusNominal)}
+                    <span className="text-xs font-normal text-slate-400 ml-1">{formatUnit(d.corpusNominal)}</span>
+                </td>
+                <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
+                    {formatCurrency(d.corpusReal)}
+                </td>
+              </tr>
+            </React.Fragment>
+          );
+        })}
       </Table>
     </div>
   );

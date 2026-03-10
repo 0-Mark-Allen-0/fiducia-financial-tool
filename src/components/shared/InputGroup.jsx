@@ -8,10 +8,26 @@ export function InputGroup({
   type = "number", 
   isCurrency = false,
   step = "1",
+  min,       // NEW: Minimum value guardrail
+  max,       // NEW: Maximum value guardrail
   tooltip = null 
 }) {
-  // CHANGED: Use abbreviation (15k) instead of full number (15,000)
+  // Use abbreviation (15k) instead of full number (15,000)
   const formattedValue = value > 0 ? formatUnit(value) : '';
+
+  // NEW: Internal blur handler to auto-correct out-of-bound values
+  const handleBlur = (e) => {
+    let val = parseFloat(e.target.value) || 0;
+    
+    // Enforce boundaries if they are explicitly passed
+    if (min !== undefined && val < min) val = min;
+    if (max !== undefined && val > max) val = max;
+    
+    // Update state if the value had to be corrected
+    if (val !== value) {
+      onChange(val);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -35,7 +51,10 @@ export function InputGroup({
         type={type}
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+        onBlur={handleBlur} // NEW: Trigger auto-correction on losing focus
         step={step}
+        min={min} // NEW: HTML native validation attribute
+        max={max} // NEW: HTML native validation attribute
         className="input-field font-medium"
       />
 

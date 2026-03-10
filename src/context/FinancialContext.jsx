@@ -12,13 +12,17 @@ export const FinancialProvider = ({ children }) => {
   // --- 1. GLOBAL SETTINGS ---
   const [isProMode, setIsProMode] = useState(false);
   const [inflationRate, setInflationRate] = useState(6);
+  
+  // NEW: The Master Projection Timeline (Limits the visual/compounding boundaries)
+  // Hard limits: min 1, max 75. Let's set a default of 25.
+  const [masterHorizon, setMasterHorizon] = useState(25);
 
   // --- 2. INPUT STATES ---
   const [sipInput, setSipInput] = useState({
     amount: 15000,
     stepUp: 10,
     returnRate: 12,
-    horizon: 15,
+    horizon: 15, // Contribution Horizon
   });
 
   const [savInput, setSavInput] = useState({
@@ -38,13 +42,12 @@ export const FinancialProvider = ({ children }) => {
     horizon: 15,
   });
 
-  // VPF Input now includes 'strategy' for the Shadow Ledger
   const [vpfInput, setVpfInput] = useState({
     amount: 5000,
     stepUp: 10,
     rate: 8.25,
     horizon: 15,
-    strategy: 'maximize' // Options: 'maximize', 'sip', 'save'
+    strategy: 'maximize' 
   });
 
   const [swpInput, setSwpInput] = useState({
@@ -58,45 +61,55 @@ export const FinancialProvider = ({ children }) => {
     ltcg: 12.5,
   });
 
+  // --- THE CASCADE EFFECT ---
+  // When the user updates the Master Horizon, we intercept it here to ensure
+  // no individual contribution horizon exceeds the new Master limit.
+  const updateMasterHorizon = (newVal) => {
+    // 1. Enforce Hard Limits (1 to 75 years)
+    const validVal = Math.max(1, Math.min(75, Number(newVal)));
+    setMasterHorizon(validVal);
+
+    // 2. The Cascade: Auto-correct any card horizons that are now out of bounds
+    setSipInput(prev => ({ ...prev, horizon: Math.min(prev.horizon, validVal) }));
+    setSavInput(prev => ({ ...prev, horizon: Math.min(prev.horizon, validVal) }));
+    setEpfInput(prev => ({ ...prev, horizon: Math.min(prev.horizon, validVal) }));
+    setVpfInput(prev => ({ ...prev, horizon: Math.min(prev.horizon, validVal) }));
+  };
+
   // --- 3. OUTPUT DATA (Structured for Tabs) ---
   const [dashboardData, setDashboardData] = useState({
     summary: { total: 0, corpus: 0, gains: 0 },
     
-    // Series Data for Tables
     salarySeries: [],
     epfSeries: [],
     vpfSeries: [],
     sipSeries: [],
     savSeries: [],
-    netWorthSeries: [], // Aggregated
+    netWorthSeries: [], 
     
-    // Retirement
     swpSeries: [],
-    
-    // Cash Flow (Year 1 Snapshot)
     cashFlow: { income: 0, outflow: 0, net: 0 }
   });
 
   // --- 4. THE CALCULATION CHAIN ---
   useEffect(() => {
-    const maxHorizon = Math.max(sipInput.horizon, savInput.horizon, epfInput.horizon, vpfInput.horizon);
-
-    // STEP 1: Salary & Tax Projection
+    // STEP 1: Salary & Tax Projection runs for the entire Master Horizon
     const salaryData = calculateSalarySeries({
         startSalary: epfInput.salary,
         hike: epfInput.hike,
-        years: maxHorizon,
+        years: masterHorizon, 
         inflationRate
     });
 
     // STEP 2: EPF/VPF (Shadow Ledger & Strategy)
-    // In Simple Mode, we force 0 VPF and standard EPF logic (no diversion)
     const epfResults = calculateEPF_VPF_Pro({
         salarySeries: salaryData,
         basicPercent: epfInput.basicPercent,
         empContribPct: epfInput.empContrib,
         emprContribPct: epfInput.emprContrib,
         epfRate: epfInput.rate,
+        epfHorizon: epfInput.horizon, // Passing distinct horizon
+        vpfHorizon: vpfInput.horizon, // Passing distinct horizon
         vpfInput: isProMode ? vpfInput : { ...vpfInput, amount: 0, strategy: 'maximize' }, 
         inflationRate
     });
@@ -116,8 +129,9 @@ export const FinancialProvider = ({ children }) => {
         stepUp: sipInput.stepUp,
         returnRate: sipInput.returnRate,
         inflationRate,
-        years: maxHorizon,
-        extraFlows: sipOverflow // Inject EPF diversion here
+        activeYears: sipInput.horizon, // The contribution phase
+        totalYears: masterHorizon,     // The compounding/visual phase
+        extraFlows: sipOverflow 
     });
 
     const savResults = calculateInvestment({
@@ -125,14 +139,15 @@ export const FinancialProvider = ({ children }) => {
         stepUp: savInput.stepUp,
         returnRate: savInput.returnRate,
         inflationRate,
-        years: maxHorizon,
-        extraFlows: savOverflow // Inject EPF diversion here
+        activeYears: savInput.horizon, // The contribution phase
+        totalYears: masterHorizon,     // The compounding/visual phase
+        extraFlows: savOverflow 
     });
 
     // STEP 5: Aggregate Net Worth & Disposable Income
     let netWorthSeries = [];
 
-    for (let i = 0; i < maxHorizon; i++) {
+    for (let i = 0; i < masterHorizon; i++) {
         const salaryItem = salaryData[i] || {};
         const sipItem = sipResults.series[i] || {};
         const savItem = savResults.series[i] || {};
@@ -152,11 +167,12 @@ export const FinancialProvider = ({ children }) => {
 
         // B. Disposable Income Calculation
         // Formula: PostTaxSalary - (SIP + Sav + VPF + Mandatory_EPF_Employee_Share)
-        
-        // We calculate Mandatory EPF Emp Share manually here as finance.js returns Total (Emp+Empr)
         const grossYearly = salaryItem.grossYearly || 0;
         const basicYearly = grossYearly * (epfInput.basicPercent / 100);
-        const mandatoryEpfEmpYearly = basicYearly * (epfInput.empContrib / 100);
+        
+        // Ensure we only deduct mandatory EPF from disposable income if it's still active
+        const isEpfActive = (i + 1) <= epfInput.horizon;
+        const mandatoryEpfEmpYearly = isEpfActive ? (basicYearly * (epfInput.empContrib / 100)) : 0;
 
         const totalInvestmentOutflow = (sipItem.yearlyNominal || 0) 
                                      + (savItem.yearlyNominal || 0) 
@@ -172,11 +188,11 @@ export const FinancialProvider = ({ children }) => {
             netWorthReal: totalReal,
             disposableNominal: disposableNominal,
             disposableReal: disposableNominal / infFactor,
-            isNegative: disposableNominal < 0 // Flag for UI warning
+            isNegative: disposableNominal < 0 
         });
     }
 
-    // STEP 6: SWP Calculation
+    // STEP 6: SWP Calculation (Unaffected by master horizon logic, retirement runs independently)
     const swpResults = calculateSWP({
         corpus: swpInput.corpus,
         method: swpInput.method,
@@ -196,11 +212,10 @@ export const FinancialProvider = ({ children }) => {
     setDashboardData({
         summary: {
             total: (sipResults.finalValue + savResults.finalValue + epfResults.totalEPF + epfResults.totalVPF),
-            corpus: 0, // Calculated purely on visual totals if needed, or derived
-            gains: 0   // Derived in UI if needed
+            corpus: 0, 
+            gains: 0   
         },
         
-        // Detailed Series
         salarySeries: salaryData,
         epfSeries: epfResults.epfSeries,
         vpfSeries: epfResults.vpfSeries,
@@ -212,18 +227,20 @@ export const FinancialProvider = ({ children }) => {
 
         cashFlow: {
             income: epfInput.salary,
-            netSalary: y1Salary.netYearly / 12, // Monthly Post-Tax
-            disposable: y1NetWorth.disposableNominal / 12, // Monthly Disposable
+            netSalary: y1Salary.netYearly / 12, 
+            disposable: y1NetWorth.disposableNominal / 12, 
             isNegative: y1NetWorth.isNegative
         }
     });
 
-  }, [sipInput, savInput, epfInput, vpfInput, swpInput, isProMode, inflationRate]);
+  // NOTE: Added `masterHorizon` to the dependency array
+  }, [sipInput, savInput, epfInput, vpfInput, swpInput, isProMode, inflationRate, masterHorizon]);
 
   return (
     <FinancialContext.Provider value={{
       isProMode, setIsProMode,
       inflationRate, setInflationRate,
+      masterHorizon, updateMasterHorizon, // Exposed the new state and cascading updater
       sipInput, setSipInput,
       savInput, setSavInput,
       epfInput, setEpfInput,

@@ -6,7 +6,8 @@ import { formatCurrency } from '../../../utils/format';
 import { clsx } from 'clsx';
 
 export function VPFCard() {
-  const { vpfInput, setVpfInput, epfInput, isProMode, dashboardData } = useFinancialData();
+  // NEW: Extracted masterHorizon from context
+  const { vpfInput, setVpfInput, epfInput, isProMode, dashboardData, masterHorizon } = useFinancialData();
 
   if (!isProMode) return null;
 
@@ -25,6 +26,7 @@ export function VPFCard() {
 
   // --- 2. GET DISPLAY DATA ---
   const series = dashboardData.vpfSeries || [];
+  // Final data is taken at the end of the Master Horizon
   const finalData = series[series.length - 1] || {};
   const totalValue = finalData.corpusNominal || 0;
 
@@ -87,7 +89,15 @@ export function VPFCard() {
                 <InputGroup label="Monthly VPF (₹)" value={vpfInput.amount} onChange={(v) => update('amount', v)} isCurrency />
             </div>
             <InputGroup label="Step-up (%)" value={vpfInput.stepUp} onChange={(v) => update('stepUp', v)} />
-            <InputGroup label="Horizon (Yrs)" value={vpfInput.horizon} onChange={(v) => update('horizon', v)} />
+            
+            {/* NEW: Passed min and max guardrails */}
+            <InputGroup 
+                label="Horizon (Yrs)" 
+                value={vpfInput.horizon} 
+                onChange={(v) => update('horizon', v)} 
+                min={1} 
+                max={masterHorizon} 
+            />
         </div>
       </div>
 

@@ -1,18 +1,25 @@
 import { useFinancialData } from '../../../context/FinancialContext';
 import { InputGroup } from '../../shared/InputGroup';
 import { ResultRow } from '../../shared/ResultRow';
-import { TrendingUp, CornerDownRight } from 'lucide-react'; // Added Icon
+import { TrendingUp, CornerDownRight } from 'lucide-react';
 
 export function SIPCard() {
-  const { sipInput, setSipInput, dashboardData, isProMode, vpfInput } = useFinancialData();
+  // NEW: Extracted masterHorizon from context
+  const { sipInput, setSipInput, dashboardData, isProMode, vpfInput, masterHorizon } = useFinancialData();
 
   const update = (field, val) => setSipInput(prev => ({ ...prev, [field]: val }));
 
   const series = dashboardData.sipSeries || [];
+  
+  // Final data is taken at the end of the Master Horizon (to show total projected wealth)
   const finalData = series[series.length - 1] || {};
 
   const totalValue = finalData.corpusNominal || 0;
-  const totalGains = totalValue - (finalData.yearlyNominal ? series.reduce((acc, curr) => acc + curr.monthlyNominal * 12, 0) : 0);
+  
+  // FIX: Calculate total invested correctly by summing yearlyNominal 
+  // (This handles passive compounding years where yearlyNominal drops to 0)
+  const totalInvested = series.reduce((acc, curr) => acc + (curr.yearlyNominal || 0), 0);
+  const totalGains = totalValue - totalInvested;
 
   // Check if receiving funds
   const isReceiving = isProMode && vpfInput.strategy === 'sip';
@@ -41,7 +48,15 @@ export function SIPCard() {
         </div>
         <InputGroup label="Step-up (%)" value={sipInput.stepUp} onChange={(v) => update('stepUp', v)} />
         <InputGroup label="Return (%)" value={sipInput.returnRate} onChange={(v) => update('returnRate', v)} step="0.1" />
-        <InputGroup label="Horizon (Yrs)" value={sipInput.horizon} onChange={(v) => update('horizon', v)} />
+        
+        {/* NEW: Passed min and max guardrails */}
+        <InputGroup 
+            label="Horizon (Yrs)" 
+            value={sipInput.horizon} 
+            onChange={(v) => update('horizon', v)} 
+            min={1}
+            max={masterHorizon} 
+        />
       </div>
 
       <div className="mt-auto bg-slate-50/50 dark:bg-black/20 p-4 rounded-xl">
