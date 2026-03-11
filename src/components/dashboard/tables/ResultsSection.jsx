@@ -4,7 +4,7 @@ import { formatCurrency, formatUnit, cleanForCSV } from '../../../utils/format';
 import { Table } from '../../shared/Table';
 import { Tabs } from '../../shared/Tabs';
 import { clsx } from 'clsx';
-import { PauseCircle, Zap, ArrowRightCircle, ArrowDownCircle } from 'lucide-react'; 
+import { PauseCircle, Zap, ArrowRightCircle, ArrowDownCircle, TrendingUp, TrendingDown } from 'lucide-react'; 
 
 export function ResultsSection() {
   const { dashboardData, isProMode } = useFinancialData();
@@ -96,7 +96,6 @@ export function ResultsSection() {
                   <div>{formatCurrency(d.disposableNominal)}</div>
                   <div className="text-xs opacity-70 font-normal flex items-center gap-2">
                       Mo: {formatCurrency(d.disposableNominal / 12)}
-                      {/* EPF Capped Indicator */}
                       {epf.isEpfCapped && (
                           <span className="text-[8px] uppercase tracking-wider bg-brand-green/20 text-brand-green px-1.5 py-0.5 rounded flex items-center gap-0.5">
                               <Zap size={8} /> EPF Capped
@@ -118,7 +117,63 @@ export function ResultsSection() {
   }
 
   // 2. NET WORTH TABLE
-  if (activeTab === 'networth') return null; 
+  if (activeTab === 'networth') {
+    const headers = ["Year", "Net Worth (Nominal)", "Net Worth (Real)", "YoY Growth"];
+    
+    return (
+      <div className="w-full">
+        <Tabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
+        <Table 
+          title="Total Net Worth Projection"
+          subTitle="Aggregated value of all assets (SIP + Savings + EPF + VPF)"
+          headers={headers}
+          onExport={() => exportCSV('Net_Worth_Total', headers, dashboardData.netWorthSeries.map((d, index) => {
+            const prevNominal = index > 0 ? dashboardData.netWorthSeries[index - 1].netWorthNominal : 0;
+            const yoyGrowth = prevNominal > 0 ? ((d.netWorthNominal - prevNominal) / prevNominal) * 100 : 0;
+            const displayYoY = prevNominal > 0 ? `${yoyGrowth.toFixed(2)}%` : 'N/A';
+            return [d.year, d.netWorthNominal, d.netWorthReal, displayYoY];
+          }))}
+        >
+          {dashboardData.netWorthSeries.map((d, index) => {
+            // NEW: YoY Math Logic
+            const prevNominal = index > 0 ? dashboardData.netWorthSeries[index - 1].netWorthNominal : 0;
+            const yoyGrowth = prevNominal > 0 ? ((d.netWorthNominal - prevNominal) / prevNominal) * 100 : 0;
+
+            return (
+              <tr key={d.year} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                <td className="px-6 py-4 font-medium text-slate-500">{d.year}</td>
+                
+                <td className="px-6 py-4 font-bold text-2xl text-slate-800 dark:text-white">
+                  {formatCurrency(d.netWorthNominal)}
+                  <span className="text-xs font-normal text-slate-400 ml-2">{formatUnit(d.netWorthNominal)}</span>
+                </td>
+                
+                <td className="px-6 py-4 font-bold text-lg text-brand-green">
+                  {formatCurrency(d.netWorthReal)}
+                  <span className="text-xs font-normal text-brand-green/60 ml-2">{formatUnit(d.netWorthReal)}</span>
+                </td>
+                
+                {/* NEW: YoY Growth Column */}
+                <td className="px-6 py-4 font-medium">
+                   {prevNominal > 0 ? (
+                      <span className={clsx(
+                          "flex items-center gap-1 text-sm font-bold", 
+                          yoyGrowth >= 0 ? "text-brand-green" : "text-brand-danger"
+                      )}>
+                         {yoyGrowth >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />} 
+                         {Math.abs(yoyGrowth).toFixed(2)}%
+                      </span>
+                   ) : (
+                      <span className="text-slate-400 opacity-50 font-medium">—</span>
+                   )}
+                </td>
+              </tr>
+            );
+          })}
+        </Table>
+      </div>
+    );
+  }
 
   // 3. SIP / SAVINGS / EPF / VPF (Generic Logic)
   let currentSeries = [];
@@ -217,7 +272,7 @@ export function ResultsSection() {
                         )}
                     </div>
 
-                    {/* NEW: Explicitly show Employee Share for EPF to avoid 2.5L limit confusion */}
+                    {/* Explicitly show Employee Share for EPF to avoid 2.5L limit confusion */}
                     {activeTab === 'epf' ? (
                         <div className="text-[10px] text-slate-400 mt-1 font-medium">
                             Emp Share: <span className={d.yearlyEmployeeNominal > 250000 ? "text-brand-danger" : "text-brand-blue"}>
