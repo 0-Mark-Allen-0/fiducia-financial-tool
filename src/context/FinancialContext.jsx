@@ -13,7 +13,7 @@ export const FinancialProvider = ({ children }) => {
   const [isProMode, setIsProMode] = useState(false);
   const [inflationRate, setInflationRate] = useState(6);
   
-  // NEW: The Master Projection Timeline (Limits the visual/compounding boundaries)
+  // The Master Projection Timeline (Limits the visual/compounding boundaries)
   // Hard limits: min 1, max 75. Let's set a default of 25.
   const [masterHorizon, setMasterHorizon] = useState(25);
 
@@ -40,6 +40,9 @@ export const FinancialProvider = ({ children }) => {
     empContrib: 12,
     emprContrib: 3.67,
     horizon: 15,
+    // NEW: EPF Strategy Options
+    strategy: 'standard', // Options: 'standard', 'smart'
+    divertTo: 'sip'       // Options: 'sip', 'save', 'cash'
   });
 
   const [vpfInput, setVpfInput] = useState({
@@ -108,19 +111,34 @@ export const FinancialProvider = ({ children }) => {
         empContribPct: epfInput.empContrib,
         emprContribPct: epfInput.emprContrib,
         epfRate: epfInput.rate,
-        epfHorizon: epfInput.horizon, // Passing distinct horizon
-        vpfHorizon: vpfInput.horizon, // Passing distinct horizon
+        epfHorizon: epfInput.horizon, 
+        vpfHorizon: vpfInput.horizon, 
+        epfStrategy: isProMode ? epfInput.strategy : 'standard', // NEW: Pass EPF strategy
         vpfInput: isProMode ? vpfInput : { ...vpfInput, amount: 0, strategy: 'maximize' }, 
         inflationRate
     });
 
-    // STEP 3: Route Overflow based on Strategy
-    let sipOverflow = [];
-    let savOverflow = [];
+    // STEP 3: Route Overflows (Advanced Routing for both EPF and VPF)
+    let sipOverflow = new Array(masterHorizon).fill(0);
+    let savOverflow = new Array(masterHorizon).fill(0);
 
     if (isProMode) {
-        if (vpfInput.strategy === 'sip') sipOverflow = epfResults.overflowSeries;
-        if (vpfInput.strategy === 'save') savOverflow = epfResults.overflowSeries;
+        // Fallback for current engine (overflowSeries) vs new engine (vpfOverflowSeries)
+        const vpfArr = epfResults.vpfOverflowSeries || epfResults.overflowSeries || [];
+        const epfArr = epfResults.epfOverflowSeries || [];
+
+        for (let i = 0; i < masterHorizon; i++) {
+            // A. Route VPF Overflow
+            if (vpfInput.strategy === 'sip') sipOverflow[i] += (vpfArr[i] || 0);
+            if (vpfInput.strategy === 'save') savOverflow[i] += (vpfArr[i] || 0);
+
+            // B. Route EPF "Smart Cap" Savings
+            if (epfInput.strategy === 'smart') {
+                if (epfInput.divertTo === 'sip') sipOverflow[i] += (epfArr[i] || 0);
+                if (epfInput.divertTo === 'save') savOverflow[i] += (epfArr[i] || 0);
+                // Note: If 'cash', we add it nowhere, letting it naturally stay in Disposable Income!
+            }
+        }
     }
 
     // STEP 4: Calculate Investments (SIP & Savings)
@@ -129,8 +147,8 @@ export const FinancialProvider = ({ children }) => {
         stepUp: sipInput.stepUp,
         returnRate: sipInput.returnRate,
         inflationRate,
-        activeYears: sipInput.horizon, // The contribution phase
-        totalYears: masterHorizon,     // The compounding/visual phase
+        activeYears: sipInput.horizon, 
+        totalYears: masterHorizon,     
         extraFlows: sipOverflow 
     });
 
@@ -139,8 +157,8 @@ export const FinancialProvider = ({ children }) => {
         stepUp: savInput.stepUp,
         returnRate: savInput.returnRate,
         inflationRate,
-        activeYears: savInput.horizon, // The contribution phase
-        totalYears: masterHorizon,     // The compounding/visual phase
+        activeYears: savInput.horizon, 
+        totalYears: masterHorizon,     
         extraFlows: savOverflow 
     });
 
@@ -166,20 +184,25 @@ export const FinancialProvider = ({ children }) => {
                         + (vpfItem.corpusReal || 0);
 
         // B. Disposable Income Calculation
-        // Formula: PostTaxSalary - (SIP + Sav + VPF + Mandatory_EPF_Employee_Share)
         const grossYearly = salaryItem.grossYearly || 0;
         const basicYearly = grossYearly * (epfInput.basicPercent / 100);
-        
-        // Ensure we only deduct mandatory EPF from disposable income if it's still active
         const isEpfActive = (i + 1) <= epfInput.horizon;
-        const mandatoryEpfEmpYearly = isEpfActive ? (basicYearly * (epfInput.empContrib / 100)) : 0;
+        
+        // NEW: Read the exact employee contribution from the engine (with fallback to old math to prevent crash)
+        const mandatoryEpfEmpYearly = epfItem.yearlyEmployeeNominal !== undefined 
+            ? epfItem.yearlyEmployeeNominal 
+            : (isEpfActive ? (basicYearly * (epfInput.empContrib / 100)) : 0);
 
         const totalInvestmentOutflow = (sipItem.yearlyNominal || 0) 
                                      + (savItem.yearlyNominal || 0) 
                                      + (vpfItem.yearlyNominal || 0) 
                                      + mandatoryEpfEmpYearly;
 
-        const disposableNominal = (salaryItem.netYearly || 0) - totalInvestmentOutflow;
+        // NEW: Account for the tax penalty on the employer's un-invested matching contribution 
+        const extraTax = (epfResults.employerTaxDragSeries && epfResults.employerTaxDragSeries[i]) || 0;
+
+        // Formula: PostTaxSalary - Outflows - Extra Tax Penalty
+        const disposableNominal = (salaryItem.netYearly || 0) - totalInvestmentOutflow - extraTax;
         const infFactor = Math.pow(1 + (inflationRate/100), i+1);
 
         netWorthSeries.push({
@@ -192,7 +215,7 @@ export const FinancialProvider = ({ children }) => {
         });
     }
 
-    // STEP 6: SWP Calculation (Unaffected by master horizon logic, retirement runs independently)
+    // STEP 6: SWP Calculation 
     const swpResults = calculateSWP({
         corpus: swpInput.corpus,
         method: swpInput.method,
@@ -233,14 +256,13 @@ export const FinancialProvider = ({ children }) => {
         }
     });
 
-  // NOTE: Added `masterHorizon` to the dependency array
   }, [sipInput, savInput, epfInput, vpfInput, swpInput, isProMode, inflationRate, masterHorizon]);
 
   return (
     <FinancialContext.Provider value={{
       isProMode, setIsProMode,
       inflationRate, setInflationRate,
-      masterHorizon, updateMasterHorizon, // Exposed the new state and cascading updater
+      masterHorizon, updateMasterHorizon,
       sipInput, setSipInput,
       savInput, setSavInput,
       epfInput, setEpfInput,

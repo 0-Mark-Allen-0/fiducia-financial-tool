@@ -16,6 +16,7 @@ import { ResultsSection } from './components/dashboard/tables/ResultsSection';
 import { InflationCard } from './components/dashboard/retirement/InflationCard';
 import { SWPCard } from './components/dashboard/retirement/SWPCard';
 import { SWPTable } from './components/dashboard/retirement/SWPTable';
+import { StrategyCard } from './components/dashboard/inputs/StrategyCard';
 
 // --- NEW: MASTER HORIZON CONTROLLER ---
 const MasterHorizonControl = () => {
@@ -80,6 +81,8 @@ const Dashboard = () => {
       {/* --- NEW: GLOBAL CONTROLS --- */}
       <MasterHorizonControl />
 
+      <StrategyCard />
+
       {/* INPUTS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
           {/* 1. Income Details (Simple) / EPF (Pro) */}
@@ -105,7 +108,7 @@ const Dashboard = () => {
       {/* === RETIREMENT PHASE === */}
       <div className="mt-12">
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-              🏝️ Retirement Planning
+              Retirement Planning
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">

@@ -1,7 +1,7 @@
 import { useFinancialData } from '../../../context/FinancialContext';
 import { formatCurrency, formatUnit, cleanForCSV } from '../../../utils/format';
-import { Download } from 'lucide-react';
-import { clsx } from 'clsx'; // Added clsx for conditional cell styling
+import { Download, Zap, ArrowDownCircle } from 'lucide-react';
+import { clsx } from 'clsx'; 
 
 export function NetWorthTable() {
   const { dashboardData } = useFinancialData();
@@ -16,7 +16,6 @@ export function NetWorthTable() {
       "Net Worth (Nominal)", "Net Worth (Real)"
     ];
     
-    // Fixed the data mapping to match our modern Context structure
     const rows = netWorthSeries.map((d, i) => {
       const sip = sipSeries[i] || {};
       const sav = savSeries[i] || {};
@@ -77,7 +76,6 @@ export function NetWorthTable() {
           </thead>
           <tbody className="divide-y divide-black/5 dark:divide-white/5">
             {netWorthSeries.map((row, i) => {
-              // Extract individual engine rows for this specific year
               const sipItem = sipSeries[i] || {};
               const savItem = savSeries[i] || {};
               const epfItem = epfSeries[i] || {};
@@ -86,11 +84,15 @@ export function NetWorthTable() {
                 <tr key={row.year} className="hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
                   <td className="px-6 py-3 font-medium text-slate-500">{row.year}</td>
                   
-                  {/* SIP NOMINAL CELL (Cell-Specific Dimming) */}
+                  {/* SIP NOMINAL CELL */}
                   <td className={clsx("px-6 py-3 transition-all", sipItem.isActive ? "" : "opacity-60 bg-slate-50/50 dark:bg-white/[0.02]")}>
                       <div className="flex items-start justify-between">
                         <div>
-                          <div>{formatCurrency(sipItem.corpusNominal || 0)}</div>
+                          <div className="flex items-center gap-1.5">
+                              {formatCurrency(sipItem.corpusNominal || 0)}
+                              {/* Diversion Received Indicator */}
+                              {sipItem.isReceivingDiversion && <ArrowDownCircle size={12} className="text-brand-green" title="Received Diverted Funds" />}
+                          </div>
                           <div className="text-xs text-slate-400">{formatUnit(sipItem.corpusNominal || 0)}</div>
                         </div>
                         {!sipItem.isActive && (
@@ -108,10 +110,13 @@ export function NetWorthTable() {
 
                   {/* SAVINGS NOMINAL CELL */}
                   <td className={clsx("px-6 py-3 hidden md:table-cell transition-all text-slate-500", savItem.isActive ? "" : "opacity-60 bg-slate-50/50 dark:bg-white/[0.02]")}>
-                      <div className="flex items-center gap-2">
-                        {formatCurrency(savItem.corpusNominal || 0)}
+                      <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            {formatCurrency(savItem.corpusNominal || 0)}
+                            {savItem.isReceivingDiversion && <ArrowDownCircle size={12} className="text-brand-green" title="Received Diverted Funds" />}
+                          </div>
                         {!savItem.isActive && (
-                          <span className="text-[9px] font-bold uppercase bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">
+                          <span className="text-[9px] font-bold uppercase bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300 ml-2">
                             Passive
                           </span>
                         )}
@@ -122,7 +127,11 @@ export function NetWorthTable() {
                   <td className={clsx("px-6 py-3 transition-all", epfItem.isActive ? "" : "opacity-60 bg-slate-50/50 dark:bg-white/[0.02]")}>
                       <div className="flex items-start justify-between">
                         <div>
-                          <div>{formatCurrency(epfItem.corpusNominal || 0)}</div>
+                          <div className="flex items-center gap-1.5">
+                              {formatCurrency(epfItem.corpusNominal || 0)}
+                              {/* Capped Indicator */}
+                              {epfItem.isEpfCapped && <Zap size={12} className="text-brand-blue" title="Smart Cap Active" />}
+                          </div>
                           <div className="text-xs text-slate-400">{formatUnit(epfItem.corpusNominal || 0)}</div>
                         </div>
                         {!epfItem.isActive && (
@@ -133,13 +142,13 @@ export function NetWorthTable() {
                       </div>
                   </td>
 
-                  {/* NET WORTH NOMINAL (Always Active) */}
+                  {/* NET WORTH NOMINAL */}
                   <td className="px-6 py-3 font-bold text-slate-900 dark:text-white bg-slate-50/30 dark:bg-white/5">
                       <div>{formatCurrency(row.netWorthNominal)}</div>
                       <div className="text-xs text-slate-500 font-normal">{formatUnit(row.netWorthNominal)}</div>
                   </td>
 
-                  {/* NET WORTH REAL (Always Active) */}
+                  {/* NET WORTH REAL */}
                   <td className="px-6 py-3 font-bold text-brand-green bg-brand-green/5">
                       <div>{formatCurrency(row.netWorthReal)}</div>
                       <div className="text-xs opacity-70 font-normal">{formatUnit(row.netWorthReal)}</div>

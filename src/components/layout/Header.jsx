@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useFinancialData } from '../../context/FinancialContext';
 import { Toggle } from '../shared/Toggle';
-import { TrendingUp, ShieldCheck, Info } from 'lucide-react'; // Added Info Icon
-import { InfoModal } from '../shared/InfoModal'; // Import the Modal
+import { TrendingUp, ShieldCheck, Info, HelpCircle } from 'lucide-react'; // Added HelpCircle
+import { InfoModal } from '../shared/InfoModal';
+import { HowToUseModal } from './HowToUseModal'; // Import the new Modal
 
 export function Header() {
   const { isProMode, setIsProMode } = useFinancialData();
   const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false); // NEW: Help Modal State
 
   // Auto-Open Logic on First Visit
   useEffect(() => {
@@ -29,7 +31,7 @@ export function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl transition-all duration-300">
+      <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl transition-all duration-300">
         <div className="w-full max-w-[1440px] mx-auto px-4 h-16 flex items-center justify-between">
           
           {/* Logo Section */}
@@ -42,7 +44,7 @@ export function Header() {
                 Fiducia
               </h1>
               <span className={`text-[10px] font-bold uppercase tracking-wider ${isProMode ? 'text-brand-green' : 'text-brand-blue'}`}>
-                v1.1
+                v1.2
               </span>
             </div>
           </div>
@@ -50,6 +52,15 @@ export function Header() {
           {/* Controls Section */}
           <div className="flex items-center gap-3 md:gap-4 shrink-0">
               
+              {/* NEW: Glowing Help Trigger */}
+              <button 
+                onClick={() => setIsHelpOpen(true)}
+                className="p-2 text-brand-blue bg-brand-blue/10 rounded-full subtle-glow hover:scale-105 transition-all"
+                title="How to Use Guide"
+              >
+                <HelpCircle size={20} />
+              </button>
+
               {/* Info Trigger */}
               <button 
                 onClick={() => setIsInfoOpen(true)}
@@ -77,8 +88,9 @@ export function Header() {
         </div>
       </header>
 
-      {/* The Info Modal Component */}
+      {/* The Modals */}
       <InfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
+      <HowToUseModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
     </>
   );
 }

@@ -54,22 +54,25 @@ export const calculateEPF_VPF_Pro = ({
   empContribPct,  // 12% usually
   emprContribPct, // 3.67% usually
   epfRate,
-  epfHorizon,     // NEW: Contribution phase for EPF
-  vpfHorizon,     // NEW: Contribution phase for VPF
+  epfHorizon,     // Contribution phase for EPF
+  vpfHorizon,     // Contribution phase for VPF
+  epfStrategy = 'standard', // 'standard' or 'smart'
   vpfInput,       // { amount, stepUp, strategy }
   inflationRate
 }) => {
   
   // Totals
-  let epfCorpus = 0; // Employer + Employee (Mandatory)
-  let vpfCorpus = 0; // Voluntary only
+  let epfCorpus = 0; 
+  let vpfCorpus = 0; 
   
-  // Shadow Ledger Buckets (Combined EPF+VPF for Tax Calculation)
+  // Shadow Ledger Buckets 
   let bucketTaxFree = 0; 
   let bucketTaxable = 0;
 
-  // Overflow Series (Amount to divert to SIP/Savings)
-  let overflowSeries = []; 
+  // Granular Overflow Series 
+  let vpfOverflowSeries = []; 
+  let epfOverflowSeries = [];
+  let employerTaxDragSeries = [];
   
   // Detailed Series for Tables
   let epfSeriesData = [];
@@ -78,7 +81,7 @@ export const calculateEPF_VPF_Pro = ({
   let currentVpfMonthly = vpfInput.amount;
   let rate = epfRate / 100;
 
-  salarySeries.forEach((yearData, index) => {
+  salarySeries.forEach((yearData) => {
     const y = yearData.year;
     const grossYearly = yearData.grossYearly;
 
@@ -86,83 +89,98 @@ export const calculateEPF_VPF_Pro = ({
     const isEpfActive = y <= epfHorizon;
     const isVpfActive = y <= vpfHorizon;
 
-    // A. Calculate Nominal Inputs
+    // A. Calculate Standard Nominal Inputs
     let basicYearly = grossYearly * (basicPercent / 100);
     
-    // Mandatory EPF (Employee)
-    let epfEmpYearly = isEpfActive ? basicYearly * (empContribPct / 100) : 0;
-    
-    // Voluntary VPF (Desired)
+    let standardEpfEmp = isEpfActive ? basicYearly * (empContribPct / 100) : 0;
+    let standardEpfEmpr = isEpfActive ? basicYearly * (emprContribPct / 100) : 0;
     let vpfYearlyDesired = isVpfActive ? currentVpfMonthly * 12 : 0;
 
-    // Employer Share (Always stays in EPF, usually tax-free)
-    let epfEmprYearly = isEpfActive ? basicYearly * (emprContribPct / 100) : 0;
+    // B. Apply "Smart Cap" EPF Logic
+    let actualEpfEmp = standardEpfEmp;
+    let actualEpfEmpr = standardEpfEmpr;
+    let employeeSavings = 0;
+    let employerSavings = 0;
+    let employerTaxDrag = 0;
+    
+    // NEW FLAG: Check if EPF got capped this year
+    let isEpfCapped = false;
 
-    // B. Apply Strategy Logic (The 2.5L Cap)
-    let actualEpfEmp = epfEmpYearly;
+    // Trigger the cap if the strategy is 'smart' AND the standard contribution breaches 2.5L
+    if (epfStrategy === 'smart' && standardEpfEmp > 250000) {
+        isEpfCapped = true; // Set flag to true
+        actualEpfEmp = isEpfActive ? 21600 : 0; // ₹1,800 * 12
+        actualEpfEmpr = isEpfActive ? 21600 : 0;
+        
+        employeeSavings = standardEpfEmp - actualEpfEmp;
+        employerSavings = standardEpfEmpr - actualEpfEmpr;
+        
+        // The employer savings are paid as taxable Special Allowance. Calculate the tax penalty.
+        let marginalTaxRate = getMarginalTaxRate(grossYearly);
+        employerTaxDrag = employerSavings * marginalTaxRate;
+    }
+
+    epfOverflowSeries.push(employeeSavings);
+    employerTaxDragSeries.push(employerTaxDrag);
+
+    // C. Apply VPF Strategy Logic (The 2.5L Cap)
     let actualVpf = 0;
-    let divertableAmount = 0;
-
-    // Strategy Check
-    // 2.5L Limit applies to (EPF Employee + VPF)
+    let vpfDivertableAmount = 0;
     const LIMIT = 250000;
-    let totalDesiredContrib = epfEmpYearly + vpfYearlyDesired;
+    
+    // The limit evaluates actual EPF (which might have just been capped!)
+    let totalDesiredContrib = actualEpfEmp + vpfYearlyDesired;
 
     if (vpfInput.strategy === 'maximize') {
-        // Strategy: Maximize Corpus (Ignore Tax)
         actualVpf = vpfYearlyDesired;
-        divertableAmount = 0;
+        vpfDivertableAmount = 0;
     } else {
-        // Strategy: Cap & Divert
         if (totalDesiredContrib > LIMIT) {
-            // Priority 1: Mandatory EPF fills the limit first
-            if (epfEmpYearly >= LIMIT) {
+            if (actualEpfEmp >= LIMIT) {
                 actualVpf = 0;
-                divertableAmount = vpfYearlyDesired + (epfEmpYearly - LIMIT); 
+                vpfDivertableAmount = vpfYearlyDesired + (actualEpfEmp - LIMIT); 
                 
-                if(epfEmpYearly > LIMIT) {
-                   // Mandatory itself exceeds limit. Divert ALL VPF. 
+                if(actualEpfEmp > LIMIT) {
                    actualVpf = 0;
-                   divertableAmount = vpfYearlyDesired; 
+                   vpfDivertableAmount = vpfYearlyDesired; 
                 } else {
-                    // Mandatory is within limit. VPF fills the rest.
-                    let spaceLeft = LIMIT - epfEmpYearly;
+                    let spaceLeft = LIMIT - actualEpfEmp;
                     actualVpf = Math.min(vpfYearlyDesired, spaceLeft);
-                    divertableAmount = vpfYearlyDesired - actualVpf;
+                    vpfDivertableAmount = vpfYearlyDesired - actualVpf;
                 }
             } else {
-                let spaceLeft = Math.max(0, LIMIT - epfEmpYearly);
+                let spaceLeft = Math.max(0, LIMIT - actualEpfEmp);
                 actualVpf = Math.min(vpfYearlyDesired, spaceLeft);
-                divertableAmount = vpfYearlyDesired - actualVpf;
+                vpfDivertableAmount = vpfYearlyDesired - actualVpf;
             }
         } else {
-            // Under limit, no diversion
             actualVpf = vpfYearlyDesired;
-            divertableAmount = 0;
+            vpfDivertableAmount = 0;
         }
     }
 
-    overflowSeries.push(divertableAmount);
+    // NEW FLAG: Check if VPF got diverted this year
+    let isVpfDiverted = vpfDivertableAmount > 0;
 
-    // C. Interest & Tax Calculation (Shadow Ledger)
+    vpfOverflowSeries.push(vpfDivertableAmount);
+
+    // D. Interest & Tax Calculation (Shadow Ledger)
     let totalEmpActual = actualEpfEmp + actualVpf;
     let flowTaxFree = Math.min(totalEmpActual, LIMIT);
     let flowTaxable = Math.max(0, totalEmpActual - LIMIT);
 
-    // Interest on existing Corpus
     let interestTaxFree = bucketTaxFree * rate;
     let interestTaxable = bucketTaxable * rate;
     
-    // Calculate Tax Drag
     let marginalTaxRate = getMarginalTaxRate(grossYearly);
     let taxOnInterest = interestTaxable * marginalTaxRate;
     let netInterestTaxable = interestTaxable - taxOnInterest;
 
-    // D. Update Buckets (Shadow Ledger)
-    bucketTaxFree += flowTaxFree + interestTaxFree + epfEmprYearly;
+    // E. Update Buckets (Shadow Ledger)
+    bucketTaxFree += flowTaxFree + interestTaxFree + actualEpfEmpr;
     bucketTaxable += flowTaxable + netInterestTaxable;
 
-    // E. Update Visual Corpus (Separate EPF / VPF)
+    // F. Update Visual Corpus (Separate EPF / VPF)
     let totalOpening = epfCorpus + vpfCorpus;
     let totalNetInterest = interestTaxFree + netInterestTaxable;
     
@@ -174,30 +192,31 @@ export const calculateEPF_VPF_Pro = ({
         vpfInterest = totalNetInterest * (vpfCorpus / totalOpening);
     } 
     
-    // Year 1 / Empty Corpus interest attribution
     if(totalOpening === 0) {
-        let totalFlow = actualEpfEmp + actualVpf + epfEmprYearly;
+        let totalFlow = actualEpfEmp + actualVpf + actualEpfEmpr;
         if(totalFlow > 0) {
-            epfInterest = totalNetInterest * ((actualEpfEmp + epfEmprYearly) / totalFlow);
+            epfInterest = totalNetInterest * ((actualEpfEmp + actualEpfEmpr) / totalFlow);
             vpfInterest = totalNetInterest * (actualVpf / totalFlow);
         }
     }
 
-    epfCorpus += actualEpfEmp + epfEmprYearly + epfInterest;
+    epfCorpus += actualEpfEmp + actualEpfEmpr + epfInterest;
     vpfCorpus += actualVpf + vpfInterest;
 
-    // F. Push Series Data
+    // G. Push Series Data
     let infFactor = getInfFactor(inflationRate, y);
 
     epfSeriesData.push({
         year: y,
-        monthlyNominal: (actualEpfEmp + epfEmprYearly) / 12,
-        monthlyReal: ((actualEpfEmp + epfEmprYearly) / 12) / infFactor,
-        yearlyNominal: actualEpfEmp + epfEmprYearly,
-        yearlyReal: (actualEpfEmp + epfEmprYearly) / infFactor,
+        monthlyNominal: (actualEpfEmp + actualEpfEmpr) / 12,
+        monthlyReal: ((actualEpfEmp + actualEpfEmpr) / 12) / infFactor,
+        yearlyNominal: actualEpfEmp + actualEpfEmpr,
+        yearlyReal: (actualEpfEmp + actualEpfEmpr) / infFactor,
+        yearlyEmployeeNominal: actualEpfEmp, // Exported for Disposable Income math
         corpusNominal: epfCorpus,
         corpusReal: epfCorpus / infFactor,
-        isActive: isEpfActive // NEW: UI visual marker flag
+        isActive: isEpfActive,
+        isEpfCapped: isEpfCapped // NEW EXPORT
     });
 
     vpfSeriesData.push({
@@ -208,10 +227,10 @@ export const calculateEPF_VPF_Pro = ({
         yearlyReal: actualVpf / infFactor,
         corpusNominal: vpfCorpus,
         corpusReal: vpfCorpus / infFactor,
-        isActive: isVpfActive // NEW: UI visual marker flag
+        isActive: isVpfActive,
+        isVpfDiverted: isVpfDiverted // NEW EXPORT
     });
 
-    // Step Up VPF only if we are actively contributing
     if (isVpfActive) {
         currentVpfMonthly *= (1 + (vpfInput.stepUp / 100));
     }
@@ -220,7 +239,10 @@ export const calculateEPF_VPF_Pro = ({
   return {
     epfSeries: epfSeriesData,
     vpfSeries: vpfSeriesData,
-    overflowSeries: overflowSeries, 
+    vpfOverflowSeries: vpfOverflowSeries, 
+    overflowSeries: vpfOverflowSeries,    
+    epfOverflowSeries: epfOverflowSeries, 
+    employerTaxDragSeries: employerTaxDragSeries, 
     totalEPF: epfCorpus,
     totalVPF: vpfCorpus
   };
@@ -228,15 +250,14 @@ export const calculateEPF_VPF_Pro = ({
 
 /**
  * 3. INVESTMENT ENGINE (SIP / SAVINGS)
- * Accepts 'extraFlows' (Yearly Overflow from EPF)
  */
 export const calculateInvestment = ({
   monthlyStart,
   stepUp,
   returnRate,
   inflationRate,
-  activeYears, // NEW: The contribution phase
-  totalYears,  // NEW: The master projection horizon
+  activeYears, 
+  totalYears,  
   extraFlows = []
 }) => {
   let corpus = 0; 
@@ -245,18 +266,18 @@ export const calculateInvestment = ({
   let series = [];
 
   for (let y = 1; y <= totalYears; y++) {
-    // 1. Determine Flows
     let isActive = y <= activeYears;
 
     let baseYearlyFlow = 0;
     let extraYearlyFlow = extraFlows[y-1] || 0; 
     let extraMonthly = extraYearlyFlow / 12; 
     
-    // Only deposit user's input if in the active phase
+    // NEW FLAG: Check if receiving overflow this year
+    let isReceivingDiversion = extraYearlyFlow > 0;
+
     let activeMonthlyInput = isActive ? currentMonthly : 0;
     let totalMonthlyInput = activeMonthlyInput + extraMonthly;
 
-    // 2. Compound Monthly
     for (let m = 1; m <= 12; m++) {
       corpus = (corpus + totalMonthlyInput) * (1 + monthlyRate);
       if (isActive) baseYearlyFlow += currentMonthly;
@@ -273,10 +294,10 @@ export const calculateInvestment = ({
       yearlyReal: totalYearlyFlow / infFactor,
       corpusNominal: corpus,
       corpusReal: corpus / infFactor,
-      isActive: isActive // NEW: UI visual marker flag
+      isActive: isActive,
+      isReceivingDiversion: isReceivingDiversion // NEW EXPORT
     });
 
-    // Step Up only the base amount and only if actively contributing
     if (isActive) {
       currentMonthly *= (1 + (stepUp / 100));
     }
@@ -290,7 +311,6 @@ export const calculateInvestment = ({
 
 /**
  * 4. SWP ENGINE (RETIREMENT)
- * Unchanged as it operates purely on the retirement horizon.
  */
 export const calculateSWP = ({
   corpus,

@@ -5,13 +5,11 @@ import { Building2, Wallet, Info } from 'lucide-react';
 import { formatUnit } from '../../../utils/format';
 
 export function EPFCard() {
-  // NEW: Extracted masterHorizon from context
   const { epfInput, setEpfInput, dashboardData, isProMode, masterHorizon } = useFinancialData();
 
   const update = (field, val) => setEpfInput(prev => ({ ...prev, [field]: val }));
 
   const series = dashboardData.epfSeries || [];
-  // Final data is taken at the end of the Master Horizon
   const finalData = series[series.length - 1] || {};
   const totalValue = finalData.corpusNominal || 0;
 
@@ -68,7 +66,6 @@ export function EPFCard() {
           </div>
           
           <InputGroup label="Annual Hike (%)" value={epfInput.hike} onChange={(v) => update('hike', v)} />
-          {/* NEW: Passed min and max guardrails */}
           <InputGroup 
             label="Horizon (Yrs)" 
             value={epfInput.horizon} 
@@ -97,7 +94,7 @@ export function EPFCard() {
 
   // --- PRO MODE RENDER ---
   return (
-    <div className="glass-card p-6 flex flex-col h-full">
+    <div className="glass-card p-6 flex flex-col h-full transition-all duration-300">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-brand-green/10 rounded-lg text-brand-green">
             <Building2 size={20} />
@@ -105,41 +102,41 @@ export function EPFCard() {
         <h3 className="font-bold text-lg text-slate-800 dark:text-white">Provident Fund</h3>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="col-span-2">
-            {/* Manual Input Block with Tooltip for Pro Mode */}
-            <div className="flex flex-col gap-1.5">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
-                        Monthly Gross Salary
-                    </label>
-                    <div className="group relative">
-                        <Info size={14} className="text-slate-400 cursor-help" />
-                        {GrossSalaryTooltip}
-                    </div>
-                  </div>
-                  <input
-                    type="number"
-                    value={epfInput.salary}
-                    onChange={(e) => update('salary', parseFloat(e.target.value) || 0)}
-                    className="input-field font-medium"
-                  />
-                  <span className="text-[10px] font-medium text-brand-blue dark:text-brand-green h-3 block">
-                      {epfInput.salary > 0 ? `(${formatUnit(epfInput.salary)})` : ''}
-                  </span>
+      <div className="space-y-6 mb-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+                <div className="flex flex-col gap-1.5">
+                      <div className="flex justify-between items-center">
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                            Monthly Gross Salary
+                        </label>
+                        <div className="group relative">
+                            <Info size={14} className="text-slate-400 cursor-help" />
+                            {GrossSalaryTooltip}
+                        </div>
+                      </div>
+                      <input
+                        type="number"
+                        value={epfInput.salary}
+                        onChange={(e) => update('salary', parseFloat(e.target.value) || 0)}
+                        className="input-field font-medium"
+                      />
+                      <span className="text-[10px] font-medium text-brand-blue dark:text-brand-green h-3 block">
+                          {epfInput.salary > 0 ? `(${formatUnit(epfInput.salary)})` : ''}
+                      </span>
+                </div>
             </div>
-        </div>
-        <InputGroup label="Basic Pay (%)" value={epfInput.basicPercent} onChange={(v) => update('basicPercent', v)} />
-        <InputGroup label="Hike (%)" value={epfInput.hike} onChange={(v) => update('hike', v)} />
-        <InputGroup label="EPF Rate (%)" value={epfInput.rate} onChange={(v) => update('rate', v)} step="0.05" />
-        {/* NEW: Passed min and max guardrails */}
-        <InputGroup 
-            label="Horizon (Yrs)" 
-            value={epfInput.horizon} 
-            onChange={(v) => update('horizon', v)} 
-            min={1} 
-            max={masterHorizon} 
-        />
+            <InputGroup label="Basic Pay (%)" value={epfInput.basicPercent} onChange={(v) => update('basicPercent', v)} />
+            <InputGroup label="Hike (%)" value={epfInput.hike} onChange={(v) => update('hike', v)} />
+            <InputGroup label="EPF Rate (%)" value={epfInput.rate} onChange={(v) => update('rate', v)} step="0.05" />
+            <InputGroup 
+                label="Horizon (Yrs)" 
+                value={epfInput.horizon} 
+                onChange={(v) => update('horizon', v)} 
+                min={1} 
+                max={masterHorizon} 
+            />
+          </div>
       </div>
 
       <div className="mt-auto bg-slate-50/50 dark:bg-black/20 p-4 rounded-xl">
