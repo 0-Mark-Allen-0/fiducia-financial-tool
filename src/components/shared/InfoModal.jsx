@@ -100,16 +100,16 @@ export function InfoModal({ isOpen, onClose }) {
                     </h3>
                     <div className="space-y-3 text-xs text-slate-500 dark:text-slate-400">
                         <p>
-                            <strong>1. Disposable Income Logic:</strong> We deduct <span className="text-brand-danger font-bold">12%</span> (Employee Share) from your Gross Salary to calculate cash flow. The Employer's 12% is added directly to your Net Worth corpus but does not affect monthly cash in hand.
+                            <strong>1. Disposable Income Logic:</strong> <br /> We deduct <span className="text-brand-danger font-bold">12%</span> (Employee Share) from your Gross Salary to calculate cash flow. The Employer's share is added directly to your Net Worth corpus but does not affect monthly cash in hand. Out of the employer's <span className="text-brand-danger font-bold">12%</span>, only <span className="text-brand-danger font-bold">3.67%</span> is added to the EPF corpus, while the remaining <span className="text-brand-danger font-bold">8.33%</span> is pushed into the <span className="text-brand-danger font-bold">Employee Pension Fund (EPS)</span> (EPF's sibling that we don't track) and is not part of your investable corpus.
                         </p>
                         <p>
-                            <strong>2. Inflation Reality:</strong> The "Retirement Phase" calculates purchasing power using a standard 6% inflation rate. 1 Crore today is not 1 Crore in 20 years.
+                            <strong>2. Inflation Reality:</strong> <br /> The "Retirement Phase" calculates purchasing power using a standard 6% inflation rate. 1 Crore today is not 1 Crore in 20 years.
                         </p>
                         <p>
-                            <strong>3. Tax Regime:</strong> Pro Mode estimates tax liability based on current New Regime slabs. It is an approximation, not a CA-certified filing.
+                            <strong>3. Tax Regime:</strong> <br />Pro Mode estimates tax liability based on current New Regime slabs. It is an approximation, not a CA-certified filing.
                         </p>
                         <p>
-                            <strong>4. Salary Growth:</strong> In real life, career growth is not linear, neither is it predictable. Fiducia allows you to enter a fixed percentage that can be representative of your career growth, even if it is not exactly accurate. This was a necessary step to avoid further convolution in simulating finances.
+                            <strong>4. Salary Growth:</strong> <br /> In real life, career growth is not linear, neither is it predictable. Fiducia allows you to enter a fixed percentage that can be representative of your career growth, even if it is not exactly accurate. This was a necessary step to avoid further convolution in simulating finances.
                         </p>
                     </div>
                 </section>

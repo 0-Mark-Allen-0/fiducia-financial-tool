@@ -96,7 +96,7 @@ export function ResultsSection() {
                   <div>{formatCurrency(d.disposableNominal)}</div>
                   <div className="text-xs opacity-70 font-normal flex items-center gap-2">
                       Mo: {formatCurrency(d.disposableNominal / 12)}
-                      {/* NEW: EPF Capped Indicator */}
+                      {/* EPF Capped Indicator */}
                       {epf.isEpfCapped && (
                           <span className="text-[8px] uppercase tracking-wider bg-brand-green/20 text-brand-green px-1.5 py-0.5 rounded flex items-center gap-0.5">
                               <Zap size={8} /> EPF Capped
@@ -117,7 +117,7 @@ export function ResultsSection() {
     );
   }
 
-  // 2. NET WORTH TABLE (Rendered exactly as before, skip for brevity in this block, handled in next component)
+  // 2. NET WORTH TABLE
   if (activeTab === 'networth') return null; 
 
   // 3. SIP / SAVINGS / EPF / VPF (Generic Logic)
@@ -208,7 +208,7 @@ export function ResultsSection() {
 
                 <td className="px-6 py-4 text-slate-600 dark:text-slate-300 relative">
                     <div className="flex items-center gap-2">
-                        {formatCurrency(d.yearlyNominal)}
+                        <span className="font-medium">{formatCurrency(d.yearlyNominal)}</span>
                         {/* DIVERSION RECEIVED BADGE */}
                         {(activeTab === 'sip' || activeTab === 'sav') && d.isReceivingDiversion && (
                            <span className="text-[9px] font-bold uppercase bg-brand-green/10 text-brand-green px-1.5 py-0.5 rounded flex items-center gap-1">
@@ -216,7 +216,17 @@ export function ResultsSection() {
                            </span>
                         )}
                     </div>
-                    <div className="text-xs text-slate-400 mt-0.5">Real: {formatCurrency(d.yearlyReal)}</div>
+
+                    {/* NEW: Explicitly show Employee Share for EPF to avoid 2.5L limit confusion */}
+                    {activeTab === 'epf' ? (
+                        <div className="text-[10px] text-slate-400 mt-1 font-medium">
+                            Emp Share: <span className={d.yearlyEmployeeNominal > 250000 ? "text-brand-danger" : "text-brand-blue"}>
+                                {formatCurrency(d.yearlyEmployeeNominal)}
+                            </span>
+                        </div>
+                    ) : (
+                        <div className="text-xs text-slate-400 mt-0.5">Real: {formatCurrency(d.yearlyReal)}</div>
+                    )}
                 </td>
 
                 <td className={clsx("px-6 py-4 font-bold", colorClass)}>
