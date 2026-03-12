@@ -26,7 +26,7 @@ export function NetWorthBanner() {
   }, [summary, sipSeries, savSeries, epfSeries, vpfSeries]);
 
   return (
-    <div className="w-full bg-gradient-to-br from-slate-800 to-slate-900 dark:from-slate-900 dark:to-black text-white p-8 md:p-10 rounded-[32px] text-center shadow-2xl mb-8 relative overflow-hidden group">
+    <div className="w-full bg-gradient-to-br from-slate-800 to-slate-900 dark:from-slate-900 dark:to-black z-0 text-white p-8 md:p-10 rounded-[32px] text-center shadow-2xl mb-8 relative overflow-hidden group">
       {/* Decorative Glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-1/2 bg-brand-blue/20 blur-[100px] rounded-full group-hover:bg-brand-blue/30 transition-all duration-700"></div>
 

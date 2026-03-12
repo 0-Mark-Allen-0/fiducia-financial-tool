@@ -1,133 +1,152 @@
-import { useMemo } from 'react';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import React from 'react';
 import { useFinancialData } from '../../../context/FinancialContext';
-import { formatCurrency } from '../../../utils/format';
-
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
+import { formatCurrency, formatUnit } from '../../../utils/format';
+import { 
+  ResponsiveContainer, 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend 
+} from 'recharts';
 
 export function WealthChart() {
   const { dashboardData, isProMode } = useFinancialData();
-  
-  // FIX: Access 'netWorthSeries' instead of 'series'
-  // We also default to an empty array [] to prevent the "undefined" error during initial load
-  const series = dashboardData.netWorthSeries || [];
 
-  const chartData = useMemo(() => {
-    // Safety check: If no data, return empty structure to avoid crash
-    if (!series.length) {
-        return { labels: [], datasets: [] };
-    }
+  // --- 1. DATA AGGREGATION ---
+  // Stitching the separate arrays into a single format required by Recharts
+  const chartData = dashboardData.netWorthSeries.map((nw, index) => {
+    const sip = dashboardData.sipSeries[index]?.corpusNominal || 0;
+    const sav = dashboardData.savSeries[index]?.corpusNominal || 0;
+    const epf = dashboardData.epfSeries[index]?.corpusNominal || 0;
+    const vpf = dashboardData.vpfSeries[index]?.corpusNominal || 0;
 
     return {
-      labels: series.map(d => `Year ${d.year}`),
-      datasets: [
-        {
-          label: 'Net Worth (Nominal)',
-          // FIX: Updated property names to match new Context structure
-          data: series.map(d => d.netWorthNominal),
-          borderColor: '#007aff',
-          backgroundColor: 'rgba(0, 122, 255, 0.1)',
-          fill: true,
-          tension: 0.4,
-          borderWidth: 2,
-          pointRadius: 0,
-          pointHoverRadius: 6,
-        },
-        {
-          label: 'Net Worth (Inflation Adj)',
-          // FIX: Updated property names to match new Context structure
-          data: series.map(d => d.netWorthReal),
-          borderColor: '#34c759',
-          backgroundColor: 'transparent',
-          borderDash: [5, 5],
-          fill: false,
-          tension: 0.4,
-          borderWidth: 2,
-          pointRadius: 0,
-          pointHoverRadius: 6,
-        },
-      ],
+      yearLabel: `Year ${nw.year}`,
+      netWorth: nw.netWorthNominal,
+      SIP: sip,
+      Savings: sav,
+      EPF: epf,
+      VPF: vpf
     };
-  }, [series]);
+  });
 
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: {
-      mode: 'index',
-      intersect: false,
-    },
-    plugins: {
-      legend: {
-        position: 'top',
-        labels: {
-            color: isProMode ? '#94a3b8' : '#475569',
-            font: { family: 'Inter', size: 12 }
-        }
-      },
-      tooltip: {
-        backgroundColor: 'rgba(15, 23, 42, 0.9)',
-        titleColor: '#f8fafc',
-        bodyColor: '#f8fafc',
-        padding: 12,
-        callbacks: {
-            label: (context) => {
-                let label = context.dataset.label || '';
-                if (label) label += ': ';
-                if (context.parsed.y !== null) label += formatCurrency(context.parsed.y);
-                return label;
-            }
-        }
-      },
-    },
-    scales: {
-      x: {
-        grid: { display: false },
-        ticks: { color: isProMode ? '#64748b' : '#94a3b8', maxTicksLimit: 8 }
-      },
-      y: {
-        grid: { color: isProMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' },
-        ticks: {
-            color: isProMode ? '#64748b' : '#94a3b8',
-            callback: (value) => {
-                if(value >= 10000000) return (value/10000000).toFixed(1) + 'Cr';
-                if(value >= 100000) return (value/100000).toFixed(0) + 'L';
-                return value;
-            }
-        }
-      }
+  // --- 2. CUSTOM TOOLTIP ---
+  // Replaces the ugly default tooltip with a beautiful, theme-aware glass card
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-4 rounded-xl shadow-xl border border-slate-200 dark:border-white/10">
+          <p className="font-bold text-slate-800 dark:text-white mb-2 border-b border-black/5 dark:border-white/5 pb-2">
+            {label}
+          </p>
+          
+          {/* Reverse the payload so the tooltip order matches the visual stack order (Top to Bottom) */}
+          {[...payload].reverse().map((entry, index) => (
+            <div key={index} className="flex items-center justify-between gap-6 py-1">
+              <span className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: entry.color }}></div>
+                {entry.name}
+              </span>
+              <span className="font-bold text-sm text-slate-900 dark:text-white">
+                {formatCurrency(entry.value)}
+              </span>
+            </div>
+          ))}
+          
+          {/* Show Total only in Pro Mode (since Simple mode is already just the total) */}
+          {isProMode && (
+            <div className="mt-2 pt-2 border-t border-black/5 dark:border-white/5 flex justify-between items-center">
+              <span className="text-xs font-bold text-slate-500">Total Net Worth</span>
+              <span className="font-bold text-brand-blue">
+                {formatCurrency(payload.reduce((sum, entry) => sum + entry.value, 0))}
+              </span>
+            </div>
+          )}
+        </div>
+      );
     }
+    return null;
   };
 
   return (
-    <div className="glass-card p-6 mb-8 h-[400px]">
-        <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-            <span>📈</span> The Power of Compounding
+    <div className="glass-card p-6 w-full flex flex-col mb-6">
+      
+      <div className="mb-6">
+        <h3 className="font-bold text-lg text-slate-800 dark:text-white">
+          {isProMode ? "Asset Composition Chart" : "Wealth Accumulation"}
         </h3>
-        <div className="h-[320px] w-full">
-            <Line data={chartData} options={options} />
-        </div>
+        <p className="text-xs text-slate-500">
+          {isProMode 
+            ? "Visual breakdown of your portfolio's growth over time." 
+            : "Projected growth of your total net worth."}
+        </p>
+      </div>
+
+      <div className="w-full h-[350px] md:h-[450px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart
+            data={chartData}
+            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+          >
+            {/* Soft grid lines */}
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#94a3b8" strokeOpacity={0.2} />
+            
+            <XAxis 
+              dataKey="yearLabel" 
+              tick={{ fontSize: 10, fill: '#64748b' }} 
+              tickLine={false}
+              axisLine={false}
+              minTickGap={30}
+            />
+            
+            <YAxis 
+              tickFormatter={(value) => formatUnit(value)} 
+              tick={{ fontSize: 10, fill: '#64748b' }}
+              tickLine={false}
+              axisLine={false}
+              width={60}
+            />
+            
+            <Tooltip content={<CustomTooltip />} />
+            
+            <Legend 
+              verticalAlign="top" 
+              height={36} 
+              iconType="circle"
+              wrapperStyle={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}
+            />
+
+            {/* --- SIMPLE MODE RENDER --- */}
+            {!isProMode && (
+              <Area 
+                type="monotone" 
+                dataKey="netWorth" 
+                name="Net Worth"
+                stroke="#0ea5e9" // brand-blue
+                strokeWidth={3}
+                fill="#0ea5e9" 
+                fillOpacity={0.15} 
+                activeDot={{ r: 6, strokeWidth: 0 }}
+              />
+            )}
+
+            {/* --- PRO MODE RENDER (Stacked Areas) --- */}
+            {isProMode && (
+              <>
+                {/* Stack Order: Safest at the bottom, volatile at the top */}
+                <Area type="monotone" dataKey="EPF" stackId="1" stroke="#eab308" fill="#eab308" fillOpacity={0.8} strokeWidth={2} />
+                <Area type="monotone" dataKey="VPF" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.8} strokeWidth={2} />
+                <Area type="monotone" dataKey="Savings" stackId="1" stroke="#a855f7" fill="#a855f7" fillOpacity={0.8} strokeWidth={2} />
+                <Area type="monotone" dataKey="SIP" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.8} strokeWidth={2} />
+              </>
+            )}
+
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

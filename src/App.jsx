@@ -99,8 +99,8 @@ const Dashboard = () => {
       </div>
 
       {/* VISUALIZATION */}
-      {/* Simple Mode: Show Chart | Pro Mode: Hide Chart */}
-      {!isProMode && <WealthChart />}
+      {/* Simple Mode: Line Graph | Pro Mode: Instrument Allocation */}
+      <WealthChart />
 
       {/* DATA TABLES */}
       <ResultsSection />

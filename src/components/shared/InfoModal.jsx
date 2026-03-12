@@ -41,7 +41,7 @@ export function InfoModal({ isOpen, onClose }) {
         <div className="shrink-0 flex items-center justify-between p-6 border-b border-slate-100 dark:border-white/5 bg-transparent rounded-t-3xl">
             <div>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    Fiducia <span className="text-brand-blue text-xs uppercase tracking-widest border border-brand-blue/20 px-2 py-0.5 rounded-full">v1.2</span>
+                    Fiducia <span className="text-brand-blue text-xs uppercase tracking-widest border border-brand-blue/20 px-2 py-0.5 rounded-full">v1.3</span>
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">Sovereign Wealth Planning Engine</p>
             </div>

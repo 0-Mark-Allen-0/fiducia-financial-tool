@@ -13,19 +13,22 @@ export function EPFCard() {
   const finalData = series[series.length - 1] || {};
   const totalValue = finalData.corpusNominal || 0;
 
-  // --- REUSABLE TOOLTIP COMPONENT ---
+  // --- REUSABLE TOOLTIP COMPONENT (Updated with accurate formula) ---
   const GrossSalaryTooltip = (
-    <div className="absolute right-0 bottom-full mb-2 w-64 p-3 bg-slate-800 text-white text-[10px] rounded-lg shadow-xl hidden group-hover:block z-50 leading-relaxed border border-slate-600">
-        <strong className="text-brand-blue block mb-1">Convert CTC to Gross:</strong>
-        <div className="space-y-1 mb-2">
-            <p className="opacity-80">Start: Monthly Fixed Pay (CTC / 12)</p>
-            <p className="text-red-300">- Employer PF (12% of Basic)</p>
-            <p className="text-red-300">- Gratuity (If not notional)</p>
+    <div className="absolute right-0 bottom-full mb-2 w-72 p-4 bg-slate-800 text-white text-[10px] rounded-xl shadow-2xl hidden group-hover:block z-50 leading-relaxed border border-slate-600">
+        <strong className="text-brand-blue text-xs block mb-2">How to find Taxable Gross Salary:</strong>
+        <div className="space-y-1.5 mb-3 bg-slate-900/50 p-2 rounded-lg">
+            <p className="opacity-80">Start: Total Fixed CTC (Ignore Variable)</p>
+            <p className="text-red-300">- Minus: Notional Benefits (Internet, Gratuity)</p>
+            <p className="text-red-300">- Minus: Employer's EPF (Usually 12% of Basic)</p>
             <div className="border-t border-white/20 my-1"></div>
-            <p className="font-bold text-green-300">= GROSS SALARY (Enter This)</p>
+            <p className="font-bold text-green-300 text-xs">= GROSS SALARY (Enter This)</p>
         </div>
-        <p className="italic opacity-70 mt-2">
-            * We remove Gratuity/Employer PF here because they are not part of your monthly paycheck.
+        <p className="italic opacity-70 mt-2 text-[9px]">
+            * Note: We ask for the salary after the Employer's EPF is removed because it is technically not part of your taxable monthly paycheck. We will add the Employer's share back into your Net Worth automatically. Your variable pay and bonuses are excluded from this calculation since they are not guaranteed monthly cash flows and can distort the EPF contribution calculations. Exclusion might result in incorrect tax calculations, and that is a limitation of this software.
+        </p>
+        <p className="italic opacity-70 mt-2 text-[9px]">
+            * Note: Please calculate EPF properly. The employer deduction depends on the EPF plan you've opted (standard 12% of Basic Pay OR legal minimum of 1,800/- per month). This figure needs to be accurate to avoid misrepresentation of your cash flows and final corpus. If you're unsure, check your payslip or consult your HR for the exact EPF deduction amount.
         </p>
     </div>
   );
@@ -96,7 +99,7 @@ export function EPFCard() {
   return (
     <div className="glass-card p-6 flex flex-col h-full transition-all duration-300">
       <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-brand-green/10 rounded-lg text-brand-green">
+        <div className="p-2 bg-[#eab308]/10 rounded-lg text-[#eab308]">
             <Building2 size={20} />
         </div>
         <h3 className="font-bold text-lg text-slate-800 dark:text-white">Provident Fund</h3>

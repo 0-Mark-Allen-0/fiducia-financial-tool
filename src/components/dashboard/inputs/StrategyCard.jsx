@@ -5,27 +5,21 @@ import { clsx } from 'clsx';
 export function StrategyCard() {
   const { epfInput, setEpfInput, vpfInput, setVpfInput, isProMode, dashboardData } = useFinancialData();
 
-  // This card ONLY appears in Pro Mode
   if (!isProMode) return null;
 
   const updateEpf = (field, val) => setEpfInput(prev => ({ ...prev, [field]: val }));
   const updateVpf = (field, val) => setVpfInput(prev => ({ ...prev, [field]: val }));
 
   // --- 1. PREDICTIVE ARRAY SCANNING ---
-  // Instead of manual math, we observe the actual generated timelines to find the EXACT year a strategy triggers
   const epfSeries = dashboardData.epfSeries || [];
   const vpfSeries = dashboardData.vpfSeries || [];
 
-  // 1A. Find when the Smart Cap triggers
+  // Find when triggers happen
   const firstEpfCapYear = epfSeries.find(d => d.isEpfCapped)?.year;
-
-  // 1B. Find when the Standard EPF breaches 2.5L (Only applies if standard strategy is kept)
   const firstEpfBreachYear = epfSeries.find(d => d.yearlyEmployeeNominal > 250000)?.year;
-
-  // 1C. Find when VPF actively diverts
   const firstVpfDivertYear = vpfSeries.find(d => d.isVpfDiverted)?.year;
 
-  // 1D. Find when Combined (EPF + VPF) breaches 2.5L (Used for warning about Maximize tax penalties)
+  // Find Combined Breach (EPF + VPF)
   let firstCombinedBreachYear = null;
   for (let i = 0; i < epfSeries.length; i++) {
       const epf = epfSeries[i];
@@ -36,8 +30,8 @@ export function StrategyCard() {
       }
   }
 
-  // Helper to format the year text smoothly
   const formatYear = (y) => y === 1 ? "immediately (Year 1)" : `in Year ${y}`;
+  const isEpfMinActive = epfInput.strategy === 'minimum';
 
   return (
     <div className="glass-card p-6 flex flex-col w-full border-slate-200 dark:border-white/10 shadow-xl mb-6">
@@ -59,15 +53,16 @@ export function StrategyCard() {
           {/* LEFT: EPF STRATEGY */}
           <div className="space-y-4">
               <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide flex justify-between">
-                 EPF Contribution Rule
-                 {firstEpfCapYear && <span className="text-brand-blue normal-case">Savings Diverting</span>}
+                 1. EPF Contribution Rule
+                 {(firstEpfCapYear || isEpfMinActive) && <span className="text-brand-blue normal-case">Savings Diverting</span>}
               </label>
               
-              <div className="bg-slate-100 dark:bg-black/40 p-1 rounded-xl flex text-xs font-semibold">
+              {/* NEW: 3-Way Toggle for EPF Strategy */}
+              <div className="bg-slate-100 dark:bg-black/40 p-1 rounded-xl flex text-[10px] sm:text-xs font-semibold h-[44px]">
                   <button 
                       onClick={() => updateEpf('strategy', 'standard')}
                       className={clsx(
-                          "flex-1 py-2.5 rounded-lg transition-all",
+                          "flex-1 py-1 rounded-lg transition-all",
                           epfInput.strategy === 'standard' ? "bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-white" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                       )}
                   >
@@ -76,16 +71,25 @@ export function StrategyCard() {
                   <button 
                       onClick={() => updateEpf('strategy', 'smart')}
                       className={clsx(
-                          "flex-1 py-2.5 rounded-lg transition-all",
+                          "flex-1 py-1 rounded-lg transition-all",
                           epfInput.strategy === 'smart' ? "bg-white dark:bg-slate-700 shadow text-brand-blue" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                       )}
                   >
                       2.5L Smart Cap
                   </button>
+                  <button 
+                      onClick={() => updateEpf('strategy', 'minimum')}
+                      className={clsx(
+                          "flex-1 py-1 rounded-lg transition-all",
+                          epfInput.strategy === 'minimum' ? "bg-white dark:bg-slate-700 shadow text-brand-green" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                      )}
+                  >
+                      Minimum EPF
+                  </button>
               </div>
 
-              {/* EPF DIVERSION TARGET (Only visible if Smart Cap is selected) */}
-              {epfInput.strategy === 'smart' && (
+              {/* EPF DIVERSION TARGET (Visible if Smart Cap OR Minimum is selected) */}
+              {epfInput.strategy !== 'standard' && (
                   <div className="p-3 bg-brand-blue/5 border border-brand-blue/10 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300">
                       <p className="text-[10px] font-bold text-brand-blue uppercase mb-2">Route EPF Savings To:</p>
                       <div className="flex gap-2">
@@ -124,7 +128,7 @@ export function StrategyCard() {
           {/* RIGHT: VPF STRATEGY */}
           <div className="space-y-4">
               <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide flex justify-between">
-                 VPF Overflow Rule
+                 2. VPF Overflow Rule
                  {firstVpfDivertYear && <span className="text-brand-purple normal-case">Active</span>}
               </label>
               
@@ -145,7 +149,7 @@ export function StrategyCard() {
                           vpfInput.strategy === 'sip' ? "bg-white dark:bg-slate-700 shadow text-brand-blue" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                       )}
                   >
-                      SIP
+                      → SIP
                   </button>
                   <button 
                       onClick={() => updateVpf('strategy', 'save')}
@@ -154,7 +158,7 @@ export function StrategyCard() {
                           vpfInput.strategy === 'save' ? "bg-white dark:bg-slate-700 shadow text-brand-purple" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                       )}
                   >
-                      Savings
+                      → FD
                   </button>
               </div>
               
@@ -168,8 +172,21 @@ export function StrategyCard() {
       {/* --- LIVE PREDICTIVE WARNINGS LOGIC BOARD --- */}
       <div className="mt-2 space-y-3 bg-slate-50/50 dark:bg-black/20 p-4 rounded-xl border border-black/5 dark:border-white/5">
         
-        {/* State 1: EPF Smart Cap Active (Synergy) */}
-        {firstEpfCapYear && (
+        {/* NEW State: Statutory Minimum Active */}
+        {isEpfMinActive && (
+            <div className="p-3 rounded-lg bg-brand-green/10 border border-brand-green/20 flex gap-2 items-start animate-in fade-in">
+                <Zap size={16} className="text-brand-green mt-0.5 shrink-0" />
+                <div>
+                    <p className="text-xs font-bold text-brand-green">Statutory Minimum Enforced</p>
+                    <p className="text-[10px] text-slate-600 dark:text-slate-400 mt-0.5">
+                        Your EPF is capped at ₹1,800/mo from Year 1. This guarantees <strong>₹2.28L</strong> of tax-free space for VPF and constantly routes all leftover employer/employee contributions to <strong className="uppercase">{epfInput.divertTo}</strong>.
+                    </p>
+                </div>
+            </div>
+        )}
+
+        {/* State 1: EPF Smart Cap Active (Synergy) - Hides if Minimum is active */}
+        {!isEpfMinActive && firstEpfCapYear && (
             <div className="p-3 rounded-lg bg-brand-green/10 border border-brand-green/20 flex gap-2 items-start animate-in fade-in">
                 <Zap size={16} className="text-brand-green mt-0.5 shrink-0" />
                 <div>
@@ -181,7 +198,7 @@ export function StrategyCard() {
             </div>
         )}
 
-        {/* State 2: VPF Diverting (Only if breaching) */}
+        {/* State 2: VPF Diverting */}
         {firstVpfDivertYear && vpfInput.strategy !== 'maximize' && (
             <div className="p-3 rounded-lg bg-brand-purple/10 border border-brand-purple/20 flex gap-2 items-start animate-in fade-in">
                 <ArrowRightCircle size={16} className="text-brand-purple mt-0.5 shrink-0" />
@@ -194,8 +211,8 @@ export function StrategyCard() {
             </div>
         )}
 
-        {/* State 3: Safe (No breaches, No smart caps active) */}
-        {!firstCombinedBreachYear && !firstEpfCapYear && !firstEpfBreachYear && (
+        {/* State 3: Safe */}
+        {!firstCombinedBreachYear && !firstEpfCapYear && !firstEpfBreachYear && !isEpfMinActive && (
             <div className="p-3 rounded-lg bg-slate-200/50 dark:bg-white/5 border border-slate-300 dark:border-white/10 flex gap-2 items-start animate-in fade-in">
                 <ShieldCheck size={16} className="text-slate-600 dark:text-slate-300 mt-0.5 shrink-0" />
                 <div>

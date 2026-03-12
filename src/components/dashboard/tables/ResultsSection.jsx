@@ -43,70 +43,87 @@ export function ResultsSection() {
   // --- RENDERERS ---
 
   // 1. SALARY TABLE
-  if (activeTab === 'salary') {
+if (activeTab === 'salary') {
     const headers = [
       "Year", 
-      "Gross Salary (Monthly)", 
-      "Post-Tax (Yearly)", 
-      "Total Investments", 
-      "Disposable (Yearly)", 
-      "Disposable (I-A)"
+      "Gross (Monthly)", 
+      "Post-Tax (Monthly)", 
+      "Disposable (Monthly)", 
+      "Gross (Yearly)",
+      "Post-Tax (Yearly)",
+      "Disposable (Yearly)"
     ];
     
-    return (
+return (
       <div className="w-full">
         <Tabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
         <Table 
           title="Salary & Disposable Income Analysis" 
-          subTitle="Breakdown of earnings, taxes, and purchasing power."
+          subTitle="Breakdown of earnings, taxes, and purchasing power (Nominal & Real)."
           headers={headers}
           onExport={() => exportCSV('Salary_Projection', headers, dashboardData.netWorthSeries.map((d, i) => {
              const sal = dashboardData.salarySeries[i];
              return [
-               d.year, sal.monthlyGross, sal.netYearly, (sal.netYearly - d.disposableNominal), d.disposableNominal, d.disposableReal
+               d.year, 
+               sal.monthlyGross, 
+               sal.netYearly / 12, 
+               d.disposableNominal / 12, 
+               sal.grossYearly,
+               sal.netYearly,
+               d.disposableNominal
              ];
           }))}
         >
           {dashboardData.netWorthSeries.map((d, i) => {
             const sal = dashboardData.salarySeries[i];
             const epf = dashboardData.epfSeries[i] || {};
-            const investmentAmount = sal.netYearly - d.disposableNominal;
-            const isInvesting = Math.round(investmentAmount) > 0;
 
             return (
               <tr key={d.year} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                 <td className="px-6 py-4 font-medium text-slate-500">{d.year}</td>
                 
+                {/* MONTHLY BLOCK */}
                 <td className="px-6 py-4 font-medium">
                    <div>{formatCurrency(sal.monthlyGross)}</div>
                    <div className="text-xs text-slate-400">Real: {formatCurrency(sal.monthlyGrossReal)}</div>
                 </td>
                 
                 <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
+                    <div>{formatCurrency(sal.netYearly / 12)}</div>
+                    <div className="text-xs text-slate-400">Real: {formatCurrency(sal.netYearlyReal / 12)}</div>
+                </td>
+
+                <td className={clsx("px-6 py-4 font-bold", d.isNegative ? "text-brand-danger bg-brand-danger/10" : "text-brand-green")}>
+                  <div>{formatCurrency(d.disposableNominal / 12)}</div>
+                  <div className={clsx("text-xs font-normal", d.isNegative ? "text-brand-danger/70" : "text-brand-green/70")}>
+                      Real: {formatCurrency(d.disposableReal / 12)}
+                  </div>
+                </td>
+
+                {/* YEARLY BLOCK */}
+                <td className="px-6 py-4 font-medium bg-slate-50/30 dark:bg-white/5 border-l border-slate-200 dark:border-white/10">
+                   <div>{formatCurrency(sal.grossYearly)}</div>
+                   <div className="text-xs text-slate-400">Real: {formatCurrency(sal.monthlyGrossReal * 12)}</div>
+                </td>
+
+                <td className="px-6 py-4 text-slate-600 dark:text-slate-300 bg-slate-50/30 dark:bg-white/5">
                     <div>{formatCurrency(sal.netYearly)}</div>
                     <div className="text-xs text-slate-400">Real: {formatCurrency(sal.netYearlyReal)}</div>
                 </td>
 
-                <td className={clsx("px-6 py-4 transition-all", isInvesting ? "text-brand-orange" : "text-slate-400 opacity-50")}>
-                    <div>{formatCurrency(investmentAmount)}</div>
-                    <div className="text-xs opacity-70">Mo: {formatCurrency(investmentAmount / 12)}</div>
-                </td>
-
-                <td className={clsx("px-6 py-4 font-bold relative", d.isNegative ? "text-brand-danger bg-brand-danger/10" : "text-brand-green")}>
-                  <div>{formatCurrency(d.disposableNominal)}</div>
-                  <div className="text-xs opacity-70 font-normal flex items-center gap-2">
-                      Mo: {formatCurrency(d.disposableNominal / 12)}
-                      {epf.isEpfCapped && (
-                          <span className="text-[8px] uppercase tracking-wider bg-brand-green/20 text-brand-green px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                              <Zap size={8} /> EPF Capped
+                <td className={clsx("px-6 py-4 font-bold relative bg-slate-50/30 dark:bg-white/5", d.isNegative ? "text-brand-danger bg-brand-danger/10" : "text-brand-green")}>
+                  <div className="flex items-center gap-2">
+                      {formatCurrency(d.disposableNominal)}
+                      {/* Capped / Min Indicators */}
+                      {(epf.isEpfCapped || epf.isEpfMinimum) && (
+                          <span className="text-[8px] uppercase tracking-wider bg-brand-green/20 text-brand-green px-1.5 py-0.5 rounded flex items-center gap-0.5" title={epf.isEpfMinimum ? "Statutory Minimum Active" : "Smart Cap Active"}>
+                              <Zap size={8} /> {epf.isEpfMinimum ? 'Min' : 'Capped'}
                           </span>
                       )}
                   </div>
-                </td>
-
-                <td className={clsx("px-6 py-4", d.isNegative ? "text-brand-danger" : "text-brand-green/70")}>
-                    <div>{formatCurrency(d.disposableReal)}</div>
-                    <div className="text-xs opacity-70">Mo: {formatCurrency(d.disposableReal / 12)}</div>
+                  <div className={clsx("text-xs font-normal", d.isNegative ? "text-brand-danger/70" : "text-brand-green/70")}>
+                      Real: {formatCurrency(d.disposableReal)}
+                  </div>
                 </td>
               </tr>
             );
