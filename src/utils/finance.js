@@ -8,30 +8,49 @@ const getInfFactor = (rate, year) => Math.pow(1 + (rate / 100), year);
 /**
  * 1. SALARY & TAX ENGINE
  * Projects Gross Salary, Calculates Tax, and determines Net Income.
+ * UPGRADE: Now handles Spousal Multiplier by separating incomes for accurate legal tax calculation.
  */
 export const calculateSalarySeries = ({
   startSalary, // Monthly Gross
   hike,
   years,
-  inflationRate
+  inflationRate,
+  // NEW SPOUSAL PARAMS
+  isSpouseEnabled, 
+  spousalMultiplier, 
+  spousalStartYear
 }) => {
   let currentMonthly = startSalary;
   let series = [];
 
   for (let y = 1; y <= years; y++) {
-    let grossYearly = currentMonthly * 12;
-    let taxYearly = calculateNewRegimeTax(grossYearly);
+    // Determine if spouse is active this year
+    let activeMultiplier = (isSpouseEnabled && y >= spousalStartYear) ? spousalMultiplier : 1;
+    let spouseFraction = activeMultiplier - 1;
+
+    // Separate incomes to prevent joint-tax bracket penalties (India taxes individuals, not households)
+    let primaryGrossYearly = currentMonthly * 12;
+    let spouseGrossYearly = primaryGrossYearly * spouseFraction;
+
+    // Calculate individual taxes legally under the New Regime
+    let primaryTax = calculateNewRegimeTax(primaryGrossYearly);
+    let spouseTax = calculateNewRegimeTax(spouseGrossYearly);
+
+    // Combine Household Income
+    let grossYearly = primaryGrossYearly + spouseGrossYearly;
+    let taxYearly = primaryTax + spouseTax;
     let netYearly = grossYearly - taxYearly;
+    let totalMonthlyGross = grossYearly / 12;
     
     let infFactor = getInfFactor(inflationRate, y);
 
     series.push({
       year: y,
-      monthlyGross: currentMonthly,
+      monthlyGross: totalMonthlyGross,
       grossYearly: grossYearly,
       taxYearly: taxYearly,
       netYearly: netYearly, 
-      monthlyGrossReal: currentMonthly / infFactor,
+      monthlyGrossReal: totalMonthlyGross / infFactor,
       netYearlyReal: netYearly / infFactor
     });
 
@@ -44,6 +63,7 @@ export const calculateSalarySeries = ({
 /**
  * 2. EPF & VPF ENGINE (PRO MODE - SHADOW Ledger)
  * Handles the 2.5L Cap and Diversion Strategies.
+ * UPGRADE: Scales contributions dynamically if a spouse is enabled.
  */
 export const calculateEPF_VPF_Pro = ({
   salarySeries,   
@@ -55,7 +75,11 @@ export const calculateEPF_VPF_Pro = ({
   vpfHorizon,     
   epfStrategy = 'standard', // 'standard', 'smart', or 'minimum'
   vpfInput,       
-  inflationRate
+  inflationRate,
+  // NEW SPOUSAL PARAMS
+  isSpouseEnabled, 
+  spousalMultiplier, 
+  spousalStartYear
 }) => {
   
   let epfCorpus = 0; 
@@ -76,13 +100,16 @@ export const calculateEPF_VPF_Pro = ({
 
   salarySeries.forEach((yearData) => {
     const y = yearData.year;
-    const grossYearly = yearData.grossYearly;
-
     const isEpfActive = y <= epfHorizon;
     const isVpfActive = y <= vpfHorizon;
 
-    // A. Calculate Standard Nominal Inputs
-    let basicYearly = grossYearly * (basicPercent / 100);
+    // To evaluate the standard bounds accurately, we must reverse the active multiplier 
+    // to find the primary gross. Otherwise, the engine thinks a single person makes the household income.
+    let activeMultiplier = (isSpouseEnabled && y >= spousalStartYear) ? spousalMultiplier : 1;
+    const primaryGrossYearly = yearData.grossYearly / activeMultiplier;
+
+    // A. Calculate Standard Nominal Inputs (Based on Primary Income)
+    let basicYearly = primaryGrossYearly * (basicPercent / 100);
     
     let standardEpfEmp = isEpfActive ? basicYearly * (empContribPct / 100) : 0;
     let standardEpfEmpr = isEpfActive ? basicYearly * (emprContribPct / 100) : 0;
@@ -98,7 +125,7 @@ export const calculateEPF_VPF_Pro = ({
     let isEpfCapped = false;
     let isEpfMinimum = false;
 
-    // NEW LOGIC: Statutory Minimum Strategy bypasses the 2.5L check
+    // Statutory Minimum Strategy bypasses the 2.5L check
     if (epfStrategy === 'minimum') {
         isEpfMinimum = true;
         actualEpfEmp = isEpfActive ? 21600 : 0; // ₹1,800 * 12
@@ -107,7 +134,7 @@ export const calculateEPF_VPF_Pro = ({
         employeeSavings = Math.max(0, standardEpfEmp - actualEpfEmp);
         employerSavings = Math.max(0, standardEpfEmpr - actualEpfEmpr);
         
-        let marginalTaxRate = getMarginalTaxRate(grossYearly);
+        let marginalTaxRate = getMarginalTaxRate(primaryGrossYearly);
         employerTaxDrag = employerSavings * marginalTaxRate;
         
     } else if (epfStrategy === 'smart' && standardEpfEmp > 250000) {
@@ -119,12 +146,9 @@ export const calculateEPF_VPF_Pro = ({
         employeeSavings = standardEpfEmp - actualEpfEmp;
         employerSavings = standardEpfEmpr - actualEpfEmpr;
         
-        let marginalTaxRate = getMarginalTaxRate(grossYearly);
+        let marginalTaxRate = getMarginalTaxRate(primaryGrossYearly);
         employerTaxDrag = employerSavings * marginalTaxRate;
     }
-
-    epfOverflowSeries.push(employeeSavings);
-    employerTaxDragSeries.push(employerTaxDrag);
 
     // C. Apply VPF Strategy Logic (The 2.5L Cap)
     let actualVpf = 0;
@@ -163,25 +187,39 @@ export const calculateEPF_VPF_Pro = ({
 
     let isVpfDiverted = vpfDivertableAmount > 0;
 
-    vpfOverflowSeries.push(vpfDivertableAmount);
-
-    // D. Interest & Tax Calculation
+    // D. Base Flow Bucketing
     let totalEmpActual = actualEpfEmp + actualVpf;
     let flowTaxFree = Math.min(totalEmpActual, LIMIT);
     let flowTaxable = Math.max(0, totalEmpActual - LIMIT);
 
+    // --- SPOUSAL SCALING MAGIC ---
+    // Now that the legal logic is resolved, multiply the actual flows and deltas by the household multiplier
+    actualEpfEmp *= activeMultiplier;
+    actualEpfEmpr *= activeMultiplier;
+    employeeSavings *= activeMultiplier;
+    employerTaxDrag *= activeMultiplier;
+    actualVpf *= activeMultiplier;
+    vpfDivertableAmount *= activeMultiplier;
+    flowTaxFree *= activeMultiplier;
+    flowTaxable *= activeMultiplier;
+
+    epfOverflowSeries.push(employeeSavings);
+    employerTaxDragSeries.push(employerTaxDrag);
+    vpfOverflowSeries.push(vpfDivertableAmount);
+
+    // E. Interest & Tax Calculation
     let interestTaxFree = bucketTaxFree * rate;
     let interestTaxable = bucketTaxable * rate;
     
-    let marginalTaxRate = getMarginalTaxRate(grossYearly);
+    let marginalTaxRate = getMarginalTaxRate(primaryGrossYearly);
     let taxOnInterest = interestTaxable * marginalTaxRate;
     let netInterestTaxable = interestTaxable - taxOnInterest;
 
-    // E. Update Buckets
+    // F. Update Buckets
     bucketTaxFree += flowTaxFree + interestTaxFree + actualEpfEmpr;
     bucketTaxable += flowTaxable + netInterestTaxable;
 
-    // F. Update Visual Corpus
+    // G. Update Visual Corpus
     let totalOpening = epfCorpus + vpfCorpus;
     let totalNetInterest = interestTaxFree + netInterestTaxable;
     
@@ -204,7 +242,7 @@ export const calculateEPF_VPF_Pro = ({
     epfCorpus += actualEpfEmp + actualEpfEmpr + epfInterest;
     vpfCorpus += actualVpf + vpfInterest;
 
-    // G. Push Series Data
+    // H. Push Series Data
     let infFactor = getInfFactor(inflationRate, y);
 
     epfSeriesData.push({
@@ -218,7 +256,7 @@ export const calculateEPF_VPF_Pro = ({
         corpusReal: epfCorpus / infFactor,
         isActive: isEpfActive,
         isEpfCapped: isEpfCapped, 
-        isEpfMinimum: isEpfMinimum // NEW EXPORT
+        isEpfMinimum: isEpfMinimum
     });
 
     vpfSeriesData.push({
@@ -254,13 +292,8 @@ export const calculateEPF_VPF_Pro = ({
  * 3. INVESTMENT ENGINE (SIP / SAVINGS)
  */
 export const calculateInvestment = ({
-  monthlyStart,
-  stepUp,
-  returnRate,
-  inflationRate,
-  activeYears, 
-  totalYears,  
-  extraFlows = []
+  monthlyStart, stepUp, returnRate, inflationRate, activeYears, totalYears,  
+  extraFlows = [], isSpouseEnabled, spousalMultiplier, spousalStartYear
 }) => {
   let corpus = 0; 
   let currentMonthly = monthlyStart;
@@ -269,34 +302,55 @@ export const calculateInvestment = ({
 
   for (let y = 1; y <= totalYears; y++) {
     let isActive = y <= activeYears;
+    let activeMultiplier = (isSpouseEnabled && y >= spousalStartYear) ? spousalMultiplier : 1;
 
     let baseYearlyFlow = 0;
     let extraYearlyFlow = extraFlows[y-1] || 0; 
-    let extraMonthly = extraYearlyFlow / 12; 
     
-    let isReceivingDiversion = extraYearlyFlow > 0;
+    // METHOD 1 FIX: Segregate Positive Inflows (Diversions) from Negative Outflows (Shocks)
+    let diversionInflow = Math.max(0, extraYearlyFlow);
+    let shockOutflow = Math.min(0, extraYearlyFlow); // This is a negative number
+    
+    let isReceivingDiversion = diversionInflow > 0;
 
-    let activeMonthlyInput = isActive ? currentMonthly : 0;
-    let totalMonthlyInput = activeMonthlyInput + extraMonthly;
+    let activeMonthlyInput = isActive ? (currentMonthly * activeMultiplier) : 0;
+    
+    // Monthly compounding ONLY applies the positive inputs to smooth out the curve
+    let totalMonthlyInput = activeMonthlyInput + (diversionInflow / 12);
 
     for (let m = 1; m <= 12; m++) {
       corpus = (corpus + totalMonthlyInput) * (1 + monthlyRate);
-      if (isActive) baseYearlyFlow += currentMonthly;
+      if (isActive) baseYearlyFlow += (currentMonthly * activeMultiplier);
     }
 
-    let totalYearlyFlow = baseYearlyFlow + extraYearlyFlow;
+    // METHOD 2 FIX: Apply the shock outflow at year-end and check for bankruptcy
+    corpus += shockOutflow; // shockOutflow is negative, so this subtracts
+    
+    let shortfall = 0;
+    let isBankrupt = false;
+    
+    if (corpus < 0) {
+        isBankrupt = true;
+        shortfall = Math.abs(corpus); // Track exactly how much cash they were missing
+        corpus = 0; // The Zero-Floor: Prevents janky inverted charts
+    }
+
+    // yearlyNominal now ONLY tracks money deposited, ignoring liquidations!
+    let totalYearlyFlow = baseYearlyFlow + diversionInflow;
     let infFactor = getInfFactor(inflationRate, y);
 
     series.push({
       year: y,
       monthlyNominal: totalMonthlyInput,
       monthlyReal: totalMonthlyInput / infFactor,
-      yearlyNominal: totalYearlyFlow,
+      yearlyNominal: totalYearlyFlow, // This fixes the disposable income spike!
       yearlyReal: totalYearlyFlow / infFactor,
       corpusNominal: corpus,
       corpusReal: corpus / infFactor,
       isActive: isActive,
-      isReceivingDiversion: isReceivingDiversion 
+      isReceivingDiversion: isReceivingDiversion,
+      isBankrupt: isBankrupt,
+      shortfallNominal: shortfall
     });
 
     if (isActive) {
@@ -312,6 +366,7 @@ export const calculateInvestment = ({
 
 /**
  * 4. SWP ENGINE (RETIREMENT)
+ * Unchanged. Operates on the final corpus value after the accumulation phase.
  */
 export const calculateSWP = ({
   corpus,

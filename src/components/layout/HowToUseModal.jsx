@@ -1,4 +1,4 @@
-import { X, BookOpen, ArrowRightCircle, Zap, ShieldCheck, TrendingUp } from 'lucide-react';
+import { X, BookOpen, ArrowRightCircle, Zap, ShieldCheck, TrendingUp, Wallet, Users, CalendarClock, PieChart } from 'lucide-react';
 import { useFinancialData } from '../../context/FinancialContext';
 
 export function HowToUseModal({ isOpen, onClose }) {
@@ -7,7 +7,7 @@ export function HowToUseModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white dark:bg-slate-900 w-full max-w-2xl max-h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-white/10">
         
         {/* Header */}
@@ -39,24 +39,30 @@ export function HowToUseModal({ isOpen, onClose }) {
             <>
               <section className="space-y-3">
                 <h3 className="font-bold text-brand-blue flex items-center gap-2">
-                  <TrendingUp size={16} /> 1. Bottom-Up Cash Flow
+                  <TrendingUp size={16} /> 1. The Master Timeline & Individual Horizons
                 </h3>
                 <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                  This tool uses "Bottom-Up Budgeting." Instead of arbitrarily dividing your salary, you enter exactly what you plan to invest every month (SIPs, Savings). The engine calculates your taxes, subtracts your investments, and reveals exactly how much <strong>Disposable Income</strong> you have left to live your life.
+                  Start by setting your <strong>Master Projection Timeline</strong> at the top. This dictates how many years the simulation will run. 
+                  <br/><br/>
+                  Inside your SIP and Savings cards, you can set shorter horizons. For example, if your Master Timeline is 25 years, but your SIP Horizon is 10 years, the engine will stop withdrawing money from your salary after Year 10, letting that corpus passively compound for the remaining 15 years.
                 </p>
-                <div className="my-4 border border-slate-200 dark:border-white/10 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                   
-                </div>
               </section>
 
               <section className="space-y-3">
                 <h3 className="font-bold text-brand-blue flex items-center gap-2">
-                  <TrendingUp size={16} /> 2. Master Horizon vs. Active Horizons
+                  <Wallet size={16} /> 2. Bottom-Up Cash Flow
                 </h3>
                 <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                  At the top of the dashboard is your <strong>Master Projection Timeline</strong>. This is how long you want to simulate your wealth. However, inside each card (like the SIP card), you can set a shorter horizon. 
-                  <br/><br/>
-                  If your Master Timeline is 25 years, but your SIP Horizon is 10 years, the engine will automatically stop withdrawing money from your salary after Year 10, and let that corpus passively compound for the remaining 15 years!
+                  Fiducia uses "Bottom-Up Budgeting." You enter your Gross Salary, and then dictate exactly what you plan to invest every month (SIPs, FDs). The engine calculates your taxes (New Regime), subtracts your investments and mandatory EPF, and reveals your <strong>Disposable Income</strong>, i.e. the cash you actually have left to live on.
+                </p>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className="font-bold text-brand-blue flex items-center gap-2">
+                  <PieChart size={16} /> 3. Inferring the Results
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Look at the <strong>Wealth Accumulation Chart</strong> to visualize the compounding curve of your total net worth. Use the <strong>Salary Preview Table</strong> to check if your Disposable Income remains positive. If it drops into the red, your step-ups (hikes in investment) are too aggressive compared to your salary growth!
                 </p>
               </section>
             </>
@@ -67,34 +73,37 @@ export function HowToUseModal({ isOpen, onClose }) {
             <>
               <section className="space-y-3">
                 <h3 className="font-bold text-brand-blue flex items-center gap-2">
-                  <ShieldCheck size={16} /> 1. The ₹2.5 Lakh Limit & Shadow Ledger
+                  <Users size={16} /> 1. The Spousal Multiplier
                 </h3>
                 <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Indian tax law dictates that if your combined Employee EPF + VPF contributions exceed ₹2.5 Lakhs in a single year, the interest earned on that excess amount is taxable at your slab rate. 
-                  Our engine uses a silent <strong>Shadow Ledger</strong> to automatically split your money into "Tax-Free" and "Taxable" buckets, calculating the exact tax drag on your compounding returns year over year.
-                </p>
-                <div className="my-4 border border-slate-200 dark:border-white/10 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                  
-                </div>
-              </section>
-
-              <section className="space-y-3">
-                <h3 className="font-bold text-brand-blue flex items-center gap-2">
-                  <Zap size={16} /> 2. The "Smart Cap" Strategy
-                </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                  In the Tax Strategy Control Center, you can switch your EPF from "12% Standard" to the <strong>2.5L Smart Cap</strong>. This brilliantly limits your EPF contribution to the statutory minimum (₹1,800/mo) the moment your salary pushes you over the ₹2.5L limit. 
-                  <br/><br/>
-                  This prevents tax penalties and opens up massive tax-free space for VPF.
+                  Toggle the Spousal Multiplier to simulate a Dual-Income household. Choose the multiplier (e.g., 1.5x means your spouse earns 50% of your income) and the year they start earning. <strong>The Magic:</strong> The engine automatically splits the incomes to calculate your taxes legally as two individuals, preventing you from being unfairly penalized by a joint-income tax bracket.
                 </p>
               </section>
 
               <section className="space-y-3">
                 <h3 className="font-bold text-brand-blue flex items-center gap-2">
-                  <ArrowRightCircle size={16} /> 3. Diversion Routing
+                  <ShieldCheck size={16} /> 2. The EPF Shadow Ledger & ₹2.5L Limit
                 </h3>
                 <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                  If your contributions breach the limit, or you trigger a Smart Cap, you don't lose that money. The engine intercepts those "savings" or "overflows" and allows you to automatically route them into your Equity SIP or Savings FD. You can watch this happen live in the Projection Tables!
+                  If your Employee EPF + VPF contribution exceeds ₹2.5 Lakhs in a year, the interest on the excess is taxable. Fiducia uses a silent <strong>Shadow Ledger</strong> to track this limit year-by-year, automatically applying your marginal tax rate to the taxable interest portion.
+                </p>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className="font-bold text-brand-blue flex items-center gap-2">
+                  <Zap size={16} /> 3. Smart Caps & Diversion Routing
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                  In the Strategy Card, switch your EPF to the <strong>2.5L Smart Cap</strong> or <strong>Statutory Min</strong>. The engine will instantly cap your EPF to avoid tax traps, capture the cash you saved, and automatically route that "overflow" into your SIPs or Savings. Watch your Asset Composition Chart shift as money flows from debt to equity!
+                </p>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className="font-bold text-brand-orange flex items-center gap-2">
+                  <CalendarClock size={16} /> 4. Life Event Shocks (Beta)
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Life isn't a straight line. Add one-time shocks (like a House Downpayment) or recurring liabilities (like EMIs) using <strong>today's money</strong>. The engine will automatically inflate the cost to the future year and drain it from your corpus or cash flow. The onus is on you to not over-spend, since this feature is still in beta.
                 </p>
               </section>
             </>

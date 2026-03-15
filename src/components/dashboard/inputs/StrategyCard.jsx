@@ -149,7 +149,7 @@ export function StrategyCard() {
                           vpfInput.strategy === 'sip' ? "bg-white dark:bg-slate-700 shadow text-brand-blue" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                       )}
                   >
-                      → SIP
+                      SIP
                   </button>
                   <button 
                       onClick={() => updateVpf('strategy', 'save')}
@@ -158,7 +158,7 @@ export function StrategyCard() {
                           vpfInput.strategy === 'save' ? "bg-white dark:bg-slate-700 shadow text-brand-purple" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                       )}
                   >
-                      → FD
+                      Savings
                   </button>
               </div>
               

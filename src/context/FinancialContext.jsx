@@ -13,16 +13,25 @@ export const FinancialProvider = ({ children }) => {
   const [isProMode, setIsProMode] = useState(false);
   const [inflationRate, setInflationRate] = useState(6);
   
-  // The Master Projection Timeline (Limits the visual/compounding boundaries)
-  // Hard limits: min 1, max 75. Let's set a default of 25.
+  // The Master Projection Timeline
   const [masterHorizon, setMasterHorizon] = useState(25);
+
+  // --- SPOUSAL SIMULATOR STATE ---
+  const [isSpouseEnabled, setIsSpouseEnabled] = useState(false);
+  const [spousalMultiplier, setSpousalMultiplier] = useState(2.0); // 2.0 = 100% Match
+  const [spousalStartYear, setSpousalStartYear] = useState(1);
+
+  // --- NEW: LIFE EVENT ENGINE STATE ---
+  // Array of objects representing shocks to the timeline.
+  // Example Event: { id: 1, name: "House Downpayment", amount: 5000000, type: "one-time", startYear: 5, endYear: 5, target: "sip", isFixed: false }
+  const [lifeEvents, setLifeEvents] = useState([]);
 
   // --- 2. INPUT STATES ---
   const [sipInput, setSipInput] = useState({
     amount: 15000,
     stepUp: 10,
     returnRate: 12,
-    horizon: 15, // Contribution Horizon
+    horizon: 15, 
   });
 
   const [savInput, setSavInput] = useState({
@@ -33,16 +42,15 @@ export const FinancialProvider = ({ children }) => {
   });
 
   const [epfInput, setEpfInput] = useState({
-    salary: 100000,   // Monthly Gross
+    salary: 100000,   
     basicPercent: 50,
     hike: 10,
     rate: 8.25,
     empContrib: 12,
     emprContrib: 3.67,
     horizon: 15,
-    // NEW: EPF Strategy Options
-    strategy: 'standard', // Options: 'standard', 'smart'
-    divertTo: 'sip'       // Options: 'sip', 'save', 'cash'
+    strategy: 'standard', 
+    divertTo: 'sip'       
   });
 
   const [vpfInput, setVpfInput] = useState({
@@ -65,43 +73,42 @@ export const FinancialProvider = ({ children }) => {
   });
 
   // --- THE CASCADE EFFECT ---
-  // When the user updates the Master Horizon, we intercept it here to ensure
-  // no individual contribution horizon exceeds the new Master limit.
   const updateMasterHorizon = (newVal) => {
-    // 1. Enforce Hard Limits (1 to 75 years)
     const validVal = Math.max(1, Math.min(75, Number(newVal)));
     setMasterHorizon(validVal);
 
-    // 2. The Cascade: Auto-correct any card horizons that are now out of bounds
     setSipInput(prev => ({ ...prev, horizon: Math.min(prev.horizon, validVal) }));
     setSavInput(prev => ({ ...prev, horizon: Math.min(prev.horizon, validVal) }));
     setEpfInput(prev => ({ ...prev, horizon: Math.min(prev.horizon, validVal) }));
     setVpfInput(prev => ({ ...prev, horizon: Math.min(prev.horizon, validVal) }));
+    setSpousalStartYear(prev => Math.min(prev, validVal));
   };
 
   // --- 3. OUTPUT DATA (Structured for Tabs) ---
   const [dashboardData, setDashboardData] = useState({
     summary: { total: 0, corpus: 0, gains: 0 },
-    
     salarySeries: [],
     epfSeries: [],
     vpfSeries: [],
     sipSeries: [],
     savSeries: [],
     netWorthSeries: [], 
-    
     swpSeries: [],
     cashFlow: { income: 0, outflow: 0, net: 0 }
   });
 
   // --- 4. THE CALCULATION CHAIN ---
   useEffect(() => {
-    // STEP 1: Salary & Tax Projection runs for the entire Master Horizon
+    
+    // STEP 1: Salary & Tax Projection
     const salaryData = calculateSalarySeries({
         startSalary: epfInput.salary,
         hike: epfInput.hike,
         years: masterHorizon, 
-        inflationRate
+        inflationRate,
+        isSpouseEnabled, 
+        spousalMultiplier, 
+        spousalStartYear
     });
 
     // STEP 2: EPF/VPF (Shadow Ledger & Strategy)
@@ -113,33 +120,49 @@ export const FinancialProvider = ({ children }) => {
         epfRate: epfInput.rate,
         epfHorizon: epfInput.horizon, 
         vpfHorizon: vpfInput.horizon, 
-        epfStrategy: isProMode ? epfInput.strategy : 'standard', // NEW: Pass EPF strategy
+        epfStrategy: isProMode ? epfInput.strategy : 'standard', 
         vpfInput: isProMode ? vpfInput : { ...vpfInput, amount: 0, strategy: 'maximize' }, 
-        inflationRate
+        inflationRate,
+        isSpouseEnabled, 
+        spousalMultiplier, 
+        spousalStartYear
     });
 
-    // STEP 3: Route Overflows (Advanced Routing for both EPF and VPF)
+    // STEP 3: Route Overflows & Inject CORPUS SHOCKS (One-Time Life Events)
     let sipOverflow = new Array(masterHorizon).fill(0);
     let savOverflow = new Array(masterHorizon).fill(0);
 
     if (isProMode) {
-        // Fallback for current engine (overflowSeries) vs new engine (vpfOverflowSeries)
         const vpfArr = epfResults.vpfOverflowSeries || epfResults.overflowSeries || [];
         const epfArr = epfResults.epfOverflowSeries || [];
 
         for (let i = 0; i < masterHorizon; i++) {
-            // A. Route VPF Overflow
+            // Route VPF/EPF Overflows
             if (vpfInput.strategy === 'sip') sipOverflow[i] += (vpfArr[i] || 0);
             if (vpfInput.strategy === 'save') savOverflow[i] += (vpfArr[i] || 0);
 
-            // B. Route EPF "Smart Cap" Savings
-            if (epfInput.strategy === 'smart') {
+            if (epfInput.strategy === 'smart' || epfInput.strategy === 'minimum') {
                 if (epfInput.divertTo === 'sip') sipOverflow[i] += (epfArr[i] || 0);
                 if (epfInput.divertTo === 'save') savOverflow[i] += (epfArr[i] || 0);
-                // Note: If 'cash', we add it nowhere, letting it naturally stay in Disposable Income!
             }
         }
     }
+
+    // --- NEW: INJECT CORPUS SHOCKS ---
+    lifeEvents.forEach(event => {
+        if (event.type === 'one-time') {
+            const yIndex = event.startYear - 1; // Array is 0-indexed, years are 1-indexed
+            if (yIndex >= 0 && yIndex < masterHorizon) {
+                // Auto-Inflate: The user inputs "Today's Money" (Present Value). 
+                // The engine dynamically calculates the Future Value (FV) for that specific year.
+                const futureValue = event.amount * Math.pow(1 + inflationRate / 100, event.startYear);
+                
+                // Inject massive negative flow into the designated bucket
+                if (event.target === 'sip') sipOverflow[yIndex] -= futureValue;
+                if (event.target === 'save') savOverflow[yIndex] -= futureValue;
+            }
+        }
+    });
 
     // STEP 4: Calculate Investments (SIP & Savings)
     const sipResults = calculateInvestment({
@@ -149,7 +172,10 @@ export const FinancialProvider = ({ children }) => {
         inflationRate,
         activeYears: sipInput.horizon, 
         totalYears: masterHorizon,     
-        extraFlows: sipOverflow 
+        extraFlows: sipOverflow,
+        isSpouseEnabled, 
+        spousalMultiplier, 
+        spousalStartYear 
     });
 
     const savResults = calculateInvestment({
@@ -159,11 +185,17 @@ export const FinancialProvider = ({ children }) => {
         inflationRate,
         activeYears: savInput.horizon, 
         totalYears: masterHorizon,     
-        extraFlows: savOverflow 
+        extraFlows: savOverflow,
+        isSpouseEnabled, 
+        spousalMultiplier, 
+        spousalStartYear 
     });
 
-    // STEP 5: Aggregate Net Worth & Disposable Income
+    // STEP 5: Aggregate Net Worth & Calculate CASHFLOW SHOCKS (Recurring EMIs)
     let netWorthSeries = [];
+    
+    // NEW: Tracker to catch the first instance of bankruptcy
+    let firstBankruptcy = null;
 
     for (let i = 0; i < masterHorizon; i++) {
         const salaryItem = salaryData[i] || {};
@@ -183,35 +215,67 @@ export const FinancialProvider = ({ children }) => {
                         + (epfItem.corpusReal || 0) 
                         + (vpfItem.corpusReal || 0);
 
+        // CALCULATE YEARLY CASHFLOW SHOCKS
+        let yearlyCashflowShocks = 0;
+        const currentYear = i + 1;
+
+        lifeEvents.forEach(event => {
+            if (event.type !== 'one-time' && event.target === 'cashflow') {
+                if (currentYear >= event.startYear && currentYear <= event.endYear) {
+                    let cost = event.amount;
+                    if (!event.isFixed) {
+                        cost = cost * Math.pow(1 + inflationRate / 100, currentYear);
+                    }
+                    if (event.type === 'monthly-emi') {
+                        cost *= 12;
+                    }
+                    yearlyCashflowShocks += cost;
+                }
+            }
+        });
+
         // B. Disposable Income Calculation
-        const grossYearly = salaryItem.grossYearly || 0;
-        const basicYearly = grossYearly * (epfInput.basicPercent / 100);
         const isEpfActive = (i + 1) <= epfInput.horizon;
+        let mandatoryEpfEmpYearly = epfItem.yearlyEmployeeNominal || 0;
         
-        // NEW: Read the exact employee contribution from the engine (with fallback to old math to prevent crash)
-        const mandatoryEpfEmpYearly = epfItem.yearlyEmployeeNominal !== undefined 
-            ? epfItem.yearlyEmployeeNominal 
-            : (isEpfActive ? (basicYearly * (epfInput.empContrib / 100)) : 0);
+        if (!isProMode && isEpfActive) {
+           const grossYearly = salaryItem.grossYearly || 0;
+           const activeMultiplier = (isSpouseEnabled && (i+1) >= spousalStartYear) ? spousalMultiplier : 1;
+           const primaryGrossYearly = grossYearly / activeMultiplier;
+           const basicYearly = primaryGrossYearly * (epfInput.basicPercent / 100);
+           mandatoryEpfEmpYearly = (basicYearly * (epfInput.empContrib / 100)) * activeMultiplier;
+        }
 
         const totalInvestmentOutflow = (sipItem.yearlyNominal || 0) 
                                      + (savItem.yearlyNominal || 0) 
                                      + (vpfItem.yearlyNominal || 0) 
                                      + mandatoryEpfEmpYearly;
 
-        // NEW: Account for the tax penalty on the employer's un-invested matching contribution 
         const extraTax = (epfResults.employerTaxDragSeries && epfResults.employerTaxDragSeries[i]) || 0;
 
-        // Formula: PostTaxSalary - Outflows - Extra Tax Penalty
-        const disposableNominal = (salaryItem.netYearly || 0) - totalInvestmentOutflow - extraTax;
+        const disposableNominal = (salaryItem.netYearly || 0) - totalInvestmentOutflow - extraTax - yearlyCashflowShocks;
         const infFactor = Math.pow(1 + (inflationRate/100), i+1);
 
+        // NEW: DETECT BANKRUPTCY
+        // We only record the first one we find so the UI doesn't spam the user.
+        if (!firstBankruptcy) {
+            if (sipItem.isBankrupt) {
+                firstBankruptcy = { type: 'SIP Portfolio', year: currentYear, shortfall: sipItem.shortfallNominal };
+            } else if (savItem.isBankrupt) {
+                firstBankruptcy = { type: 'Savings/FD', year: currentYear, shortfall: savItem.shortfallNominal };
+            } else if (disposableNominal < 0) {
+                firstBankruptcy = { type: 'Monthly Cashflow', year: currentYear, shortfall: Math.abs(disposableNominal) };
+            }
+        }
+
         netWorthSeries.push({
-            year: i + 1,
+            year: currentYear,
             netWorthNominal: totalNominal,
             netWorthReal: totalReal,
             disposableNominal: disposableNominal,
             disposableReal: disposableNominal / infFactor,
-            isNegative: disposableNominal < 0 
+            isNegative: disposableNominal < 0,
+            lifeEventsNominal: yearlyCashflowShocks
         });
     }
 
@@ -238,16 +302,13 @@ export const FinancialProvider = ({ children }) => {
             corpus: 0, 
             gains: 0   
         },
-        
         salarySeries: salaryData,
         epfSeries: epfResults.epfSeries,
         vpfSeries: epfResults.vpfSeries,
         sipSeries: sipResults.series,
         savSeries: savResults.series,
         netWorthSeries: netWorthSeries,
-        
         swpSeries: swpResults,
-
         cashFlow: {
             income: epfInput.salary,
             netSalary: y1Salary.netYearly / 12, 
@@ -256,13 +317,22 @@ export const FinancialProvider = ({ children }) => {
         }
     });
 
-  }, [sipInput, savInput, epfInput, vpfInput, swpInput, isProMode, inflationRate, masterHorizon]);
+  // Ensure lifeEvents is added to the dependency array!
+  }, [sipInput, savInput, epfInput, vpfInput, swpInput, isProMode, inflationRate, masterHorizon, isSpouseEnabled, spousalMultiplier, spousalStartYear, lifeEvents]);
 
   return (
     <FinancialContext.Provider value={{
       isProMode, setIsProMode,
       inflationRate, setInflationRate,
       masterHorizon, updateMasterHorizon,
+      
+      isSpouseEnabled, setIsSpouseEnabled,
+      spousalMultiplier, setSpousalMultiplier,
+      spousalStartYear, setSpousalStartYear,
+
+      // Export Life Events State
+      lifeEvents, setLifeEvents,
+
       sipInput, setSipInput,
       savInput, setSavInput,
       epfInput, setEpfInput,

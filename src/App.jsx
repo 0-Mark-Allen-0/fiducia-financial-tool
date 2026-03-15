@@ -17,6 +17,10 @@ import { InflationCard } from './components/dashboard/retirement/InflationCard';
 import { SWPCard } from './components/dashboard/retirement/SWPCard';
 import { SWPTable } from './components/dashboard/retirement/SWPTable';
 import { StrategyCard } from './components/dashboard/inputs/StrategyCard';
+import { SpouseCard } from './components/dashboard/inputs/SpouseCard';
+import { CashFlowChart } from './components/dashboard/charts/CashFlowChart';
+import { LifeEventsCard } from './components/dashboard/inputs/LifeEventsCard';
+import { BankruptcyBanner } from './components/shared/BankruptcyBanner';
 
 // --- NEW: MASTER HORIZON CONTROLLER ---
 const MasterHorizonControl = () => {
@@ -74,14 +78,16 @@ const Dashboard = () => {
 
   return (
     <main className="flex-grow w-full max-w-[1440px] mx-auto px-4 py-8 flex flex-col gap-8">
-            
+      <BankruptcyBanner />
       {/* === ACCUMULATION PHASE === */}
       <NetWorthBanner />
 
       {/* --- NEW: GLOBAL CONTROLS --- */}
       <MasterHorizonControl />
+      
 
       <StrategyCard />
+      {isProMode && <SpouseCard />}
 
       {/* INPUTS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
@@ -97,10 +103,12 @@ const Dashboard = () => {
           {/* 4. VPF (Pro Only) */}
           {isProMode && <VPFCard />}
       </div>
+      {isProMode && <LifeEventsCard />}
 
       {/* VISUALIZATION */}
       {/* Simple Mode: Line Graph | Pro Mode: Instrument Allocation */}
       <WealthChart />
+      {isProMode && <CashFlowChart/>}
 
       {/* DATA TABLES */}
       <ResultsSection />

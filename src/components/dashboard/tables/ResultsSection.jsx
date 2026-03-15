@@ -51,6 +51,7 @@ if (activeTab === 'salary') {
       "Disposable (Monthly)", 
       "Gross (Yearly)",
       "Post-Tax (Yearly)",
+      "Liabilities (Yearly)", // NEW HEADER
       "Disposable (Yearly)"
     ];
     
@@ -109,6 +110,10 @@ return (
                 <td className="px-6 py-4 text-slate-600 dark:text-slate-300 bg-slate-50/30 dark:bg-white/5">
                     <div>{formatCurrency(sal.netYearly)}</div>
                     <div className="text-xs text-slate-400">Real: {formatCurrency(sal.netYearlyReal)}</div>
+                </td>
+
+                <td className="px-6 py-4 text-brand-orange font-medium bg-slate-50/30 dark:bg-white/5">
+                    {d.lifeEventsNominal > 0 ? formatCurrency(d.lifeEventsNominal) : '-'}
                 </td>
 
                 <td className={clsx("px-6 py-4 font-bold relative bg-slate-50/30 dark:bg-white/5", d.isNegative ? "text-brand-danger bg-brand-danger/10" : "text-brand-green")}>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, ShieldCheck, Zap, AlertTriangle, BookOpen } from 'lucide-react';
+import { X, ShieldCheck, Zap, AlertTriangle, BookOpen, Sparkles } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export function InfoModal({ isOpen, onClose }) {
@@ -37,11 +37,11 @@ export function InfoModal({ isOpen, onClose }) {
           isOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-4"
         )}
       >
-        {/* Sticky Header (Now truly sticky because the parent is flex-col, and only the body scrolls) */}
+        {/* Sticky Header */}
         <div className="shrink-0 flex items-center justify-between p-6 border-b border-slate-100 dark:border-white/5 bg-transparent rounded-t-3xl">
             <div>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    Fiducia <span className="text-brand-blue text-xs uppercase tracking-widest border border-brand-blue/20 px-2 py-0.5 rounded-full">v1.3</span>
+                    Fiducia <span className="text-brand-blue text-xs uppercase tracking-widest border border-brand-blue/20 px-2 py-0.5 rounded-full">v1.4</span>
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">Sovereign Wealth Planning Engine</p>
             </div>
@@ -53,20 +53,41 @@ export function InfoModal({ isOpen, onClose }) {
             </button>
         </div>
 
-        {/* Scrollable Body (Applying the inset scrollbar fix here) */}
+        {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto custom-scrollbar-inset py-6 pl-6 pr-2 mr-2">
-            <div className="space-y-8 pr-2"> {/* Added inner padding to keep text away from scrollbar */}
+            <div className="space-y-8 pr-2"> 
                 
                 {/* 1. Philosophy */}
                 <section>
                     <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                        <strong>Fiducia</strong> is a lifecycle simulator designed to project your financial truth from today until retirement. Unlike standard calculators, it uses a <strong>"Shadow Ledger"</strong> system to track tax-free vs. taxable buckets separately.
+                        <strong>Fiducia</strong> is a financial lifecycle simulator designed to project your finances until retirement. 
                     </p>
+                </section>
+
+                {/* --- NEW: RELEASE NOTES --- */}
+                <section className="bg-brand-blue/5 border border-brand-blue/20 p-5 rounded-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                        <Sparkles size={64} className="text-brand-blue" />
+                    </div>
+                    <h3 className="flex items-center gap-2 text-sm font-bold text-brand-blue mb-4">
+                        <Sparkles size={16} /> What's New in v1.4
+                    </h3>
+                    <ul className="space-y-3 text-sm text-slate-700 dark:text-slate-300 relative z-10">
+                        <li>
+                            <strong className="text-slate-900 dark:text-white">💍 Spousal Multiplier:</strong> Simulate a dual-income household. The engine perfectly isolates tax brackets so you aren't hit with a joint-income penalty.
+                        </li>
+                        <li>
+                            <strong className="text-slate-900 dark:text-white">📊 Cash Flow Anatomy:</strong> A new 100% stacked bar chart that shows exactly how your Gross Salary is divided between Taxes, Investments, EMIs, and Disposable Income.
+                        </li>
+                        <li>
+                            <strong className="text-slate-900 dark:text-white">🌪️ Life Event Shocks [   BETA]:</strong> Add houses, weddings, and EMIs in today's money. The engine auto-inflates the costs and drains your corpus dynamically.
+                        </li>
+                    </ul>
                 </section>
 
                 {/* 2. Mode Comparison */}
                 <div className="grid md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-2xl bg-brand-blue/5 border border-brand-blue/10">
+                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-white/5">
                         <div className="flex items-center gap-2 mb-3 text-brand-blue">
                             <Zap size={18} />
                             <h3 className="font-bold text-sm uppercase tracking-wide">Simple Mode</h3>
@@ -79,7 +100,7 @@ export function InfoModal({ isOpen, onClose }) {
                         </ul>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-brand-green/5 border border-brand-green/10">
+                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-white/5">
                         <div className="flex items-center gap-2 mb-3 text-brand-green">
                             <ShieldCheck size={18} />
                             <h3 className="font-bold text-sm uppercase tracking-wide">Pro Mode</h3>
@@ -124,7 +145,7 @@ export function InfoModal({ isOpen, onClose }) {
             </div>
         </div>
 
-        {/* Footer Action (Shrink-0 prevents it from being crushed by scrollable content) */}
+        {/* Footer Action */}
         <div className="shrink-0 p-6 pt-4 border-t border-slate-100 dark:border-white/5 bg-transparent rounded-b-3xl">
             <button 
                 onClick={onClose}
