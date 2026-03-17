@@ -74,13 +74,13 @@ export function InfoModal({ isOpen, onClose }) {
                     </h3>
                     <ul className="space-y-3 text-sm text-slate-700 dark:text-slate-300 relative z-10">
                         <li>
-                            <strong className="text-slate-900 dark:text-white">💍 Spousal Multiplier:</strong> Simulate a dual-income household. The engine perfectly isolates tax brackets so you aren't hit with a joint-income penalty.
+                            <strong className="text-slate-900 dark:text-white">💍 Spousal Multiplier [PRO]:</strong> Simulate a dual-income household. The engine perfectly isolates tax brackets so you aren't hit with a joint-income penalty.
                         </li>
                         <li>
-                            <strong className="text-slate-900 dark:text-white">📊 Cash Flow Anatomy:</strong> A new 100% stacked bar chart that shows exactly how your Gross Salary is divided between Taxes, Investments, EMIs, and Disposable Income.
+                            <strong className="text-slate-900 dark:text-white">📊 Cash Flow Anatomy [PRO]:</strong> A new 100% stacked bar chart that shows exactly how your Gross Salary is divided between Taxes, Investments, EMIs, and Disposable Income.
                         </li>
                         <li>
-                            <strong className="text-slate-900 dark:text-white">🌪️ Life Event Shocks [   BETA]:</strong> Add houses, weddings, and EMIs in today's money. The engine auto-inflates the costs and drains your corpus dynamically.
+                            <strong className="text-slate-900 dark:text-white">🌪️ Life Event Shocks [BETA]:</strong> Add houses, weddings, and EMIs in today's money. The engine auto-inflates the costs and drains your corpus dynamically.
                         </li>
                     </ul>
                 </section>
