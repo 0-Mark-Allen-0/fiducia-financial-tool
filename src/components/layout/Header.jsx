@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useFinancialData } from '../../context/FinancialContext';
 import { Toggle } from '../shared/Toggle';
-import { TrendingUp, ShieldCheck, Info, HelpCircle } from 'lucide-react'; // Added HelpCircle
+import { Info, HelpCircle } from 'lucide-react'; // Added HelpCircle
 import { InfoModal } from '../shared/InfoModal';
 import { HowToUseModal } from './HowToUseModal'; // Import the new Modal
+import { Gem } from 'lucide-react';
+import { CirclePoundSterling } from 'lucide-react';
 
 export function Header() {
   const { isProMode, setIsProMode } = useFinancialData();
@@ -36,14 +38,14 @@ export function Header() {
           
           {/* Logo Section */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className={`p-2 rounded-xl transition-colors ${isProMode ? 'bg-brand-green/20 text-brand-green' : 'bg-brand-blue/10 text-brand-blue'}`}>
-              {isProMode ? <ShieldCheck size={24} /> : <TrendingUp size={24} />}
+            <div className={`p-2 rounded-xl transition-colors ${isProMode ? 'bg-brand-purple/20 text-brand-orange' : 'bg-brand-blue/10 text-brand-blue'}`}>
+              {isProMode ? <Gem size={30} /> : <CirclePoundSterling size={30} />}
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white leading-none">
                 Fiducia
               </h1>
-              <span className={`text-[10px] font-bold uppercase tracking-wider ${isProMode ? 'text-brand-green' : 'text-brand-blue'}`}>
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${isProMode ? 'text-brand-orange' : 'text-brand-blue'}`}>
                 v1.4
               </span>
             </div>

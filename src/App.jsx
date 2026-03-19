@@ -1,5 +1,6 @@
 import { FinancialProvider, useFinancialData } from './context/FinancialContext';
 import { Header } from './components/layout/Header';
+import { PageNav } from './components/layout/PageNav'; // NEW IMPORT
 import { Footer } from './components/layout/Footer';
 
 // Accumulation Components
@@ -14,8 +15,7 @@ import { LifeEventsCard } from './components/dashboard/inputs/LifeEventsCard';
 
 // Visualizations & Tables
 import { NetWorthBanner } from './components/dashboard/summary/NetWorthBanner';
-import { WealthChart } from './components/dashboard/charts/WealthChart';
-import { CashFlowChart } from './components/dashboard/charts/CashFlowChart';
+import { ChartSection } from './components/dashboard/charts/ChartSection'; // NEW IMPORT
 import { ResultsSection } from './components/dashboard/tables/ResultsSection';
 import { BankruptcyBanner } from './components/shared/BankruptcyBanner';
 
@@ -24,10 +24,9 @@ import { InflationCard } from './components/dashboard/retirement/InflationCard';
 import { SWPCard } from './components/dashboard/retirement/SWPCard';
 import { SWPTable } from './components/dashboard/retirement/SWPTable';
 
-// --- NEW 3-LAYER UI COMPONENT ---
-// This creates the distinct "Group Layer" that houses the individual glass cards
-const SurfaceGroup = ({ title, children, delayClass = "" }) => (
-  <section className={`p-6 sm:p-8 bg-slate-50/80 dark:bg-slate-800/40 backdrop-blur-xl border border-slate-200/60 dark:border-white/10 rounded-3xl shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 ${delayClass}`}>
+// The 3-Layer UI Surface Group
+const SurfaceGroup = ({ id, title, children, delayClass = "" }) => (
+  <section id={id} className={`p-6 sm:p-8 bg-slate-50/80 dark:bg-slate-800/40 backdrop-blur-xl border border-slate-200/60 dark:border-white/10 rounded-3xl shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 ${delayClass}`}>
     <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
         {title}
     </h2>
@@ -39,20 +38,25 @@ const Dashboard = () => {
   const { isProMode } = useFinancialData();
 
   return (
-    <main className="flex-grow w-full max-w-[1440px] mx-auto px-4 py-8 flex flex-col gap-8">
+    <main id="home" className="flex-grow w-full max-w-[1440px] mx-auto px-4 py-8 flex flex-col gap-10 scroll-mt-24">
       <BankruptcyBanner />
       <NetWorthBanner />
 
-      {/* 1. LIFE SETTINGS GROUP */}
-      <SurfaceGroup title="Life Settings">
-         <div className={`grid grid-cols-1 ${isProMode ? 'md:grid-cols-2' : ''} gap-6 items-start`}>
-            <MasterHorizonCard />
-            {isProMode && <SpouseCard />}
-         </div>
-      </SurfaceGroup>
+      {/* 1. LIFE SETTINGS GROUP (Hidden entirely in Simple Mode to save space) */}
+      <div id="settings" className="scroll-mt-24">
+        {isProMode && (
+          <SurfaceGroup title="Life Settings">
+            <div className={`grid grid-cols-1 ${isProMode ? 'md:grid-cols-2' : ''} gap-6 items-start`}>
+                <MasterHorizonCard />
+                <SpouseCard />
+            </div>
+          </SurfaceGroup>
+        )}
+        {!isProMode && <MasterHorizonCard />}
+      </div>
 
       {/* 2. VARIABLES GROUP */}
-      <SurfaceGroup title="Variables" delayClass="delay-100">
+      <SurfaceGroup id="variables" title="Variables" delayClass="delay-100 scroll-mt-24">
          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
              <EPFCard />
              <SIPCard />
@@ -63,8 +67,7 @@ const Dashboard = () => {
 
       {/* 3. STRATEGIES & SHOCKS GROUP */}
       {isProMode && (
-         <SurfaceGroup title="Strategies & Shocks" delayClass="delay-200">
-            {/* Using flex-col forces these to take 100% of the row width */}
+         <SurfaceGroup id="strategies" title="Strategies & Shocks" delayClass="delay-200 scroll-mt-24">
             <div className="flex flex-col gap-6 w-full">
                 <StrategyCard />
                 <LifeEventsCard />
@@ -73,18 +76,17 @@ const Dashboard = () => {
       )}
 
       {/* VISUALIZATION GROUP */}
-      <SurfaceGroup title="Projections" delayClass="delay-300">
-          <WealthChart />
-          {isProMode && <div className="mt-6"><CashFlowChart/></div>}
-      </SurfaceGroup>
+      <ChartSection />
 
       {/* DATA TABLES GROUP */}
-      <SurfaceGroup title="Ledger" delayClass="delay-300">
-          <ResultsSection />
-      </SurfaceGroup>
+      <div id="ledger" className="scroll-mt-24">
+         <SurfaceGroup title="Ledger" delayClass="delay-300">
+             <ResultsSection />
+         </SurfaceGroup>
+      </div>
 
       {/* === RETIREMENT PHASE === */}
-      <SurfaceGroup title="Retirement Planning" delayClass="delay-500">
+      <SurfaceGroup id="retirement" title="Retirement Planning" delayClass="delay-500 scroll-mt-24">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start mb-6">
               <InflationCard />
               <SWPCard />
@@ -101,6 +103,7 @@ function App() {
     <FinancialProvider>
       <div className="min-h-screen flex flex-col">
         <Header />
+        <PageNav />
         <Dashboard />
         <Footer />
       </div>
