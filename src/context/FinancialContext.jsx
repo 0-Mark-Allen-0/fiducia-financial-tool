@@ -279,7 +279,7 @@ export const FinancialProvider = ({ children }) => {
         });
     }
 
-    // STEP 6: SWP Calculation 
+// STEP 6: SWP Calculation 
     const swpResults = calculateSWP({
         corpus: swpInput.corpus,
         method: swpInput.method,
@@ -287,8 +287,9 @@ export const FinancialProvider = ({ children }) => {
         returnRate: swpInput.returnRate,
         inflationRate: swpInput.inflation,
         years: swpInput.horizon,
-        ltcgRate: swpInput.ltcg,
-        gainProp: swpInput.gainProp
+        // DYNAMIC TAX ZEROING FOR SIMPLE MODE
+        ltcgRate: isProMode ? swpInput.ltcg : 0,
+        gainProp: isProMode ? swpInput.gainProp : 0
     });
 
     // STEP 7: Year 1 Cash Flow Snapshot

@@ -20,15 +20,15 @@ export function ResultsSection() {
   // --- TAB CONFIGURATION ---
   const TABS = isProMode 
     ? [
-        { id: 'salary', label: 'Salary Preview' },
-        { id: 'sip', label: 'SIP Portfolio' },
+        { id: 'salary', label: 'Salary' },
+        { id: 'sip', label: 'SIP' },
         { id: 'sav', label: 'Savings' },
         { id: 'epf', label: 'EPF' },
         { id: 'vpf', label: 'VPF' },
-        { id: 'networth', label: 'Net Worth' },
+        { id: 'networth', label: 'Total' },
       ]
     : [
-        { id: 'sip', label: 'SIP Portfolio' },
+        { id: 'sip', label: 'SIP' },
         { id: 'sav', label: 'Savings' },
         { id: 'networth', label: 'Net Worth' },
       ];
