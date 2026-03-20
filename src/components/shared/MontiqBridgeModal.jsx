@@ -18,31 +18,30 @@ export function MontiqBridgeModal({ isOpen, onClose }) {
   if (!shouldRender) return null;
 
   const handleLaunch = () => {
-    // 1. Extract the final corpus values from Fiducia's ledgers
     const sipSeries = dashboardData.sipSeries || [];
     const savSeries = dashboardData.savSeries || [];
     const epfSeries = dashboardData.epfSeries || [];
     const vpfSeries = dashboardData.vpfSeries || [];
 
-    const sipTotal = sipSeries.length > 0 ? sipSeries[sipSeries.length - 1].corpusNominal : 0;
-    const savTotal = savSeries.length > 0 ? savSeries[savSeries.length - 1].corpusNominal : 0;
-    const epfTotal = epfSeries.length > 0 ? epfSeries[epfSeries.length - 1].corpusNominal : 0;
-    const vpfTotal = vpfSeries.length > 0 ? vpfSeries[vpfSeries.length - 1].corpusNominal : 0;
+    // CRITICAL FIX: Pulling corpusReal (Inflation-Adjusted) instead of corpusNominal
+    // Wrapped in Math.round() for clean inputs in Montiq
+    const sipTotal = sipSeries.length > 0 ? Math.round(sipSeries[sipSeries.length - 1].corpusReal) : 0;
+    const savTotal = savSeries.length > 0 ? Math.round(savSeries[savSeries.length - 1].corpusReal) : 0;
+    const epfTotal = epfSeries.length > 0 ? Math.round(epfSeries[epfSeries.length - 1].corpusReal) : 0;
+    const vpfTotal = vpfSeries.length > 0 ? Math.round(vpfSeries[vpfSeries.length - 1].corpusReal) : 0;
 
-    // 2. Package and save to LocalStorage for Montiq to find
     const exportData = { 
         sipTotal, 
         savingsTotal: savTotal, 
         epfTotal, 
         vpfTotal 
     };
+    
     localStorage.setItem('fiducia_export_v1', JSON.stringify(exportData));
 
-    // 3. Launch Montiq in a new tab
     const url = window.location.origin + window.location.pathname + '#/montiq';
     window.open(url, '_blank');
 
-    // 4. Close this modal in Fiducia
     onClose();
   };
 
@@ -67,7 +66,7 @@ export function MontiqBridgeModal({ isOpen, onClose }) {
                   <BanknoteArrowDown size={24}/>
                </div>
                <div>
-                  <h2 className="text-xl font-semibold text-slate-900 dark:text-white leading-none tracking-tight flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white leading-none tracking-tight flex items-center gap-2">
                       Entering Montiq 
                       <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest bg-brand-orange text-white rounded leading-none">
                           Beta
@@ -82,7 +81,7 @@ export function MontiqBridgeModal({ isOpen, onClose }) {
 
         <div className="p-6 sm:p-8 space-y-6">
             <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                You are about to leave Fiducia and enter Montiq. Montiq is our advanced, stochastic retirement engine. Please note that Montiq is still in the testing phase.
+                You are about to leave Fiducia and enter the Quant Lab. Montiq is our advanced, stochastic retirement engine. 
             </p>
 
             <div className="space-y-4">
@@ -91,7 +90,7 @@ export function MontiqBridgeModal({ isOpen, onClose }) {
                         <Activity size={16} className="text-brand-blue" /> Seamless Integration
                     </strong> 
                     <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                        We will securely transfer your exact final corpus (SIPs, Savings, EPF, and VPF) directly into Montiq so you don't have to enter it manually.
+                        We will securely transfer your exact <strong className="text-brand-blue">Inflation-Adjusted</strong> (Total Net Worth adjusted for Master Horizon) corpus directly into Montiq. This ensures your future wealth is perfectly matched against today's living expenses.
                     </p>
                 </div>
 
