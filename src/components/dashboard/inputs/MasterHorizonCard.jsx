@@ -38,7 +38,7 @@ export function MasterHorizonCard() {
           <div className="px-5 sm:px-6 pb-5 sm:pb-6 flex flex-col pt-2 border-t border-black/5 dark:border-white/5 mt-2">
             
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-              Set the global boundary for your simulation. Individual instrument horizons (like SIP or EPF) will automatically cap at this limit.
+              Set the global boundary for your simulation. Individual instrument horizons (like SIPs or Savings) will automatically cap at this limit.
             </p>
             
             <div className="flex items-center gap-4 w-full">

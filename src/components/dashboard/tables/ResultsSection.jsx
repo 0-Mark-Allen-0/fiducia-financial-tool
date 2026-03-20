@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFinancialData } from '../../../context/FinancialContext';
 import { formatCurrency, formatUnit, cleanForCSV } from '../../../utils/format';
 import { Table } from '../../shared/Table';
@@ -8,7 +8,14 @@ import { PauseCircle, Zap, ArrowRightCircle, ArrowDownCircle, TrendingUp, Trendi
 
 export function ResultsSection() {
   const { dashboardData, isProMode } = useFinancialData();
-  const [activeTab, setActiveTab] = useState('salary');
+  const [activeTab, setActiveTab] = useState(isProMode ? 'salary' : 'sip');
+
+  // Failsafe: If user toggles Pro Mode OFF while looking at a Pro-only tab, jump them to SIP
+  useEffect(() => {
+      if (!isProMode && ['salary', 'epf', 'vpf'].includes(activeTab)) {
+          setActiveTab('sip');
+      }
+  }, [isProMode, activeTab]);
 
   // --- TAB CONFIGURATION ---
   const TABS = isProMode 
@@ -21,7 +28,6 @@ export function ResultsSection() {
         { id: 'networth', label: 'Net Worth' },
       ]
     : [
-        { id: 'salary', label: 'Salary Preview' },
         { id: 'sip', label: 'SIP Portfolio' },
         { id: 'sav', label: 'Savings' },
         { id: 'networth', label: 'Net Worth' },
@@ -40,22 +46,26 @@ export function ResultsSection() {
     link.click();
   };
 
+  // --- HELPER: SIMPLE MODE NET WORTH MATH ---
+  const getSimplifiedNetWorth = (index) => {
+      const sip = dashboardData.sipSeries[index];
+      const sav = dashboardData.savSeries[index];
+      return {
+          nominal: (sip?.corpusNominal || 0) + (sav?.corpusNominal || 0),
+          real: (sip?.corpusReal || 0) + (sav?.corpusReal || 0)
+      };
+  };
+
   // --- RENDERERS ---
 
-  // 1. SALARY TABLE
-if (activeTab === 'salary') {
+  // 1. SALARY TABLE (Pro Mode Only)
+  if (activeTab === 'salary') {
     const headers = [
-      "Year", 
-      "Gross (Monthly)", 
-      "Post-Tax (Monthly)", 
-      "Disposable (Monthly)", 
-      "Gross (Yearly)",
-      "Post-Tax (Yearly)",
-      "Liabilities (Yearly)", // NEW HEADER
-      "Disposable (Yearly)"
+      "Year", "Gross (Monthly)", "Post-Tax (Monthly)", "Disposable (Monthly)", 
+      "Gross (Yearly)", "Post-Tax (Yearly)", "Liabilities (Yearly)", "Disposable (Yearly)"
     ];
     
-return (
+    return (
       <div className="w-full">
         <Tabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
         <Table 
@@ -65,13 +75,8 @@ return (
           onExport={() => exportCSV('Salary_Projection', headers, dashboardData.netWorthSeries.map((d, i) => {
              const sal = dashboardData.salarySeries[i];
              return [
-               d.year, 
-               sal.monthlyGross, 
-               sal.netYearly / 12, 
-               d.disposableNominal / 12, 
-               sal.grossYearly,
-               sal.netYearly,
-               d.disposableNominal
+               d.year, sal.monthlyGross, sal.netYearly / 12, d.disposableNominal / 12, 
+               sal.grossYearly, sal.netYearly, d.lifeEventsNominal, d.disposableNominal
              ];
           }))}
         >
@@ -119,7 +124,6 @@ return (
                 <td className={clsx("px-6 py-4 font-bold relative bg-slate-50/30 dark:bg-white/5", d.isNegative ? "text-brand-danger bg-brand-danger/10" : "text-brand-green")}>
                   <div className="flex items-center gap-2">
                       {formatCurrency(d.disposableNominal)}
-                      {/* Capped / Min Indicators */}
                       {(epf.isEpfCapped || epf.isEpfMinimum) && (
                           <span className="text-[8px] uppercase tracking-wider bg-brand-green/20 text-brand-green px-1.5 py-0.5 rounded flex items-center gap-0.5" title={epf.isEpfMinimum ? "Statutory Minimum Active" : "Smart Cap Active"}>
                               <Zap size={8} /> {epf.isEpfMinimum ? 'Min' : 'Capped'}
@@ -146,36 +150,48 @@ return (
       <div className="w-full">
         <Tabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
         <Table 
-          title="Total Net Worth Projection"
-          subTitle="Aggregated value of all assets (SIP + Savings + EPF + VPF)"
+          title={isProMode ? "Total Net Worth Projection" : "Total Net Worth Projection"}
+          subTitle={isProMode ? "Aggregated value of all assets (SIP + Savings + EPF + VPF)" : "Aggregated value of your liquid investments (SIP + Savings)"}
           headers={headers}
           onExport={() => exportCSV('Net_Worth_Total', headers, dashboardData.netWorthSeries.map((d, index) => {
-            const prevNominal = index > 0 ? dashboardData.netWorthSeries[index - 1].netWorthNominal : 0;
-            const yoyGrowth = prevNominal > 0 ? ((d.netWorthNominal - prevNominal) / prevNominal) * 100 : 0;
+            const currentNominal = isProMode ? d.netWorthNominal : getSimplifiedNetWorth(index).nominal;
+            const currentReal = isProMode ? d.netWorthReal : getSimplifiedNetWorth(index).real;
+            
+            const prevNominal = index > 0 
+                ? (isProMode ? dashboardData.netWorthSeries[index - 1].netWorthNominal : getSimplifiedNetWorth(index - 1).nominal) 
+                : 0;
+            
+            const yoyGrowth = prevNominal > 0 ? ((currentNominal - prevNominal) / prevNominal) * 100 : 0;
             const displayYoY = prevNominal > 0 ? `${yoyGrowth.toFixed(2)}%` : 'N/A';
-            return [d.year, d.netWorthNominal, d.netWorthReal, displayYoY];
+            return [d.year, currentNominal, currentReal, displayYoY];
           }))}
         >
           {dashboardData.netWorthSeries.map((d, index) => {
-            // NEW: YoY Math Logic
-            const prevNominal = index > 0 ? dashboardData.netWorthSeries[index - 1].netWorthNominal : 0;
-            const yoyGrowth = prevNominal > 0 ? ((d.netWorthNominal - prevNominal) / prevNominal) * 100 : 0;
+            
+            // DYNAMIC MATH: Uses pure SIP/Savings in Simple Mode, Full Net Worth in Pro Mode
+            const currentNominal = isProMode ? d.netWorthNominal : getSimplifiedNetWorth(index).nominal;
+            const currentReal = isProMode ? d.netWorthReal : getSimplifiedNetWorth(index).real;
+            
+            const prevNominal = index > 0 
+                ? (isProMode ? dashboardData.netWorthSeries[index - 1].netWorthNominal : getSimplifiedNetWorth(index - 1).nominal) 
+                : 0;
+            
+            const yoyGrowth = prevNominal > 0 ? ((currentNominal - prevNominal) / prevNominal) * 100 : 0;
 
             return (
               <tr key={d.year} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                 <td className="px-6 py-4 font-medium text-slate-500">{d.year}</td>
                 
                 <td className="px-6 py-4 font-bold text-2xl text-slate-800 dark:text-white">
-                  {formatCurrency(d.netWorthNominal)}
-                  <span className="text-xs font-normal text-slate-400 ml-2">{formatUnit(d.netWorthNominal)}</span>
+                  {formatCurrency(currentNominal)}
+                  <span className="text-xs font-normal text-slate-400 ml-2">{formatUnit(currentNominal)}</span>
                 </td>
                 
                 <td className="px-6 py-4 font-bold text-lg text-brand-green">
-                  {formatCurrency(d.netWorthReal)}
-                  <span className="text-xs font-normal text-brand-green/60 ml-2">{formatUnit(d.netWorthReal)}</span>
+                  {formatCurrency(currentReal)}
+                  <span className="text-xs font-normal text-brand-green/60 ml-2">{formatUnit(currentReal)}</span>
                 </td>
                 
-                {/* NEW: YoY Growth Column */}
                 <td className="px-6 py-4 font-medium">
                    {prevNominal > 0 ? (
                       <span className={clsx(
@@ -204,19 +220,19 @@ return (
 
   if (activeTab === 'sip') {
     currentSeries = dashboardData.sipSeries;
-    title = "SIP Portfolio Ledger";
+    title = "SIP Ledger";
     colorClass = "text-brand-blue";
   } else if (activeTab === 'sav') {
     currentSeries = dashboardData.savSeries;
-    title = "Savings / FD Ledger";
+    title = "Savings Ledger";
     colorClass = "text-brand-purple";
   } else if (activeTab === 'epf') {
     currentSeries = dashboardData.epfSeries;
-    title = "EPF Shadow Ledger";
+    title = "EPF Ledger";
     colorClass = "text-brand-green";
   } else if (activeTab === 'vpf') {
     currentSeries = dashboardData.vpfSeries;
-    title = "VPF Shadow Ledger";
+    title = "VPF Ledger";
     colorClass = "text-brand-green";
   }
 
@@ -264,7 +280,6 @@ return (
                         Passive
                       </span>
                     )}
-                    {/* STRATEGY BADGES ON THE YEAR */}
                     {activeTab === 'epf' && d.isEpfCapped && (
                        <span className="text-[9px] font-bold uppercase bg-brand-blue/10 text-brand-blue px-1.5 py-0.5 rounded flex items-center gap-1">
                            <Zap size={10} /> Smart Capped
@@ -286,7 +301,6 @@ return (
                 <td className="px-6 py-4 text-slate-600 dark:text-slate-300 relative">
                     <div className="flex items-center gap-2">
                         <span className="font-medium">{formatCurrency(d.yearlyNominal)}</span>
-                        {/* DIVERSION RECEIVED BADGE */}
                         {(activeTab === 'sip' || activeTab === 'sav') && d.isReceivingDiversion && (
                            <span className="text-[9px] font-bold uppercase bg-brand-green/10 text-brand-green px-1.5 py-0.5 rounded flex items-center gap-1">
                                <ArrowDownCircle size={10} /> Received Diversion
@@ -294,7 +308,6 @@ return (
                         )}
                     </div>
 
-                    {/* Explicitly show Employee Share for EPF to avoid 2.5L limit confusion */}
                     {activeTab === 'epf' ? (
                         <div className="text-[10px] text-slate-400 mt-1 font-medium">
                             Emp Share: <span className={d.yearlyEmployeeNominal > 250000 ? "text-brand-danger" : "text-brand-blue"}>

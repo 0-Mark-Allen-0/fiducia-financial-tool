@@ -31,7 +31,7 @@ export function SIPCard() {
                 <TrendingUp size={20} />
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-bold text-lg text-black dark:text-white leading-none">SIP Portfolio</h3>
+                <h3 className="font-bold text-lg text-black dark:text-white leading-none">SIPs</h3>
                 {isReceiving && !isOpen && (
                   <span className="text-[9px] font-bold text-brand-blue flex items-center gap-1 bg-brand-blue/5 px-2 py-0.5 rounded-full animate-pulse">
                       + Overflow

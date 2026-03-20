@@ -14,9 +14,12 @@ export function WealthChart() {
     const epf = dashboardData.epfSeries[index]?.corpusNominal || 0;
     const vpf = dashboardData.vpfSeries[index]?.corpusNominal || 0;
 
+    // SIMPLE MODE: Only plot SIP + Savings. PRO MODE: Plot full Net Worth.
+    const displayNetWorth = isProMode ? nw.netWorthNominal : (sip + sav);
+
     return {
       yearLabel: `Year ${nw.year}`,
-      netWorth: nw.netWorthNominal,
+      netWorth: displayNetWorth,
       SIP: sip,
       Savings: sav,
       EPF: epf,
@@ -67,7 +70,7 @@ export function WealthChart() {
           <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }} />
 
           {!isProMode && (
-            <Area type="monotone" dataKey="netWorth" name="Net Worth" stroke="#0ea5e9" strokeWidth={3} fill="#0ea5e9" fillOpacity={0.15} activeDot={{ r: 6, strokeWidth: 0 }} />
+            <Area type="monotone" dataKey="netWorth" name="Wealth" stroke="#0ea5e9" strokeWidth={3} fill="#0ea5e9" fillOpacity={0.15} activeDot={{ r: 6, strokeWidth: 0 }} />
           )}
 
           {isProMode && (

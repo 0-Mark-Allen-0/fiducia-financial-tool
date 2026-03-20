@@ -298,9 +298,10 @@ export const FinancialProvider = ({ children }) => {
     // Update State
     setDashboardData({
         summary: {
-            total: (sipResults.finalValue + savResults.finalValue + epfResults.totalEPF + epfResults.totalVPF),
-            corpus: 0, 
-            gains: 0   
+            // DYNAMIC TOTAL: Liquid Wealth (Simple) vs Full Net Worth (Pro)
+            total: isProMode 
+                ? (sipResults.finalValue + savResults.finalValue + epfResults.totalEPF + epfResults.totalVPF)
+                : (sipResults.finalValue + savResults.finalValue),
         },
         salarySeries: salaryData,
         epfSeries: epfResults.epfSeries,

@@ -28,7 +28,7 @@ export function SavingsCard() {
                 <Landmark size={20} />
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-bold text-lg text-slate-800 dark:text-white leading-none">Savings / FD</h3>
+                <h3 className="font-bold text-lg text-slate-800 dark:text-white leading-none">Savings</h3>
                 {isReceiving && !isOpen && (
                   <span className="text-[9px] font-bold text-brand-purple flex items-center gap-1 bg-brand-purple/5 px-2 py-0.5 rounded-full animate-pulse">
                       + Overflow

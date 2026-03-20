@@ -58,7 +58,7 @@ const Dashboard = () => {
       {/* 2. VARIABLES GROUP */}
       <SurfaceGroup id="variables" title="Variables" delayClass="delay-100 scroll-mt-24">
          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-             <EPFCard />
+             {isProMode && <EPFCard />}
              <SIPCard />
              <SavingsCard />
              {isProMode && <VPFCard />}
