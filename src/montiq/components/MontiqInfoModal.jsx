@@ -84,7 +84,7 @@ export function MontiqInfoModal({ activeModal, onClose }) {
     title = "Stochastic Projections";
     content = (
       <div className="space-y-4 text-sm text-slate-600 dark:text-slate-300">
-        <p className="leading-relaxed">We run your portfolio through <strong>1,000 alternate lifetimes</strong> using actual historical Nifty 50 and Bond yields to find your true probability of success.</p>
+        <p className="leading-relaxed">We run your portfolio through <strong>1,000 alternate lifetimes</strong> using actual historical Nifty 50 and Bond yields to find your true probability of success. The annual growth and inflation values are pulled from Nifty 50 and CPI, respectively.</p>
         
         <div className="space-y-3 mt-4">
            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-white/5">

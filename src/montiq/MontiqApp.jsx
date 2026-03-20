@@ -7,6 +7,7 @@ import { ConfidenceChart } from './components/ConfidenceChart';
 import { MontiqInfoModal } from './components/MontiqInfoModal';
 import { Info } from 'lucide-react';
 import { MontiqFooter } from './components/MontiqFooter';
+import { MontiqTimelineTable } from './components/MontiqTimelineTable';
 
 // Simplified Surface Group with external Modal Trigger
 const SurfaceGroup = ({ title, children, delayClass = "", onInfoClick }) => (
@@ -77,6 +78,8 @@ export function MontiqApp() {
             onInfoClick={() => setActiveModal('projections')}
           >
             <ConfidenceChart />
+
+            <MontiqTimelineTable />
           </SurfaceGroup>
 
         </main>
