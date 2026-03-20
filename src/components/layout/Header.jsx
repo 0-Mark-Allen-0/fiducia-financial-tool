@@ -46,7 +46,7 @@ export function Header() {
                 Fiducia
               </h1>
               <span className={`text-[10px] font-bold uppercase tracking-wider ${isProMode ? 'text-brand-orange' : 'text-brand-blue'}`}>
-                v1.4
+                v2.0
               </span>
             </div>
           </div>

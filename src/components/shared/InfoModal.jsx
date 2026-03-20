@@ -41,7 +41,7 @@ export function InfoModal({ isOpen, onClose }) {
         <div className="shrink-0 flex items-center justify-between p-6 border-b border-slate-100 dark:border-white/5 bg-transparent rounded-t-3xl">
             <div>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    Fiducia <span className="text-brand-blue text-xs uppercase tracking-widest border border-brand-blue/20 px-2 py-0.5 rounded-full">v1.4</span>
+                    Fiducia <span className="text-brand-blue text-xs uppercase tracking-widest border border-brand-blue/20 px-2 py-0.5 rounded-full">v2.0</span>
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">Sovereign Wealth Planning Engine</p>
             </div>
@@ -64,23 +64,26 @@ export function InfoModal({ isOpen, onClose }) {
                     </p>
                 </section>
 
-                {/* --- NEW: RELEASE NOTES --- */}
+                {/* --- UPDATED: RELEASE NOTES FOR v2.0 --- */}
                 <section className="bg-brand-blue/5 border border-brand-blue/20 p-5 rounded-2xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-4 opacity-10">
                         <Sparkles size={64} className="text-brand-blue" />
                     </div>
                     <h3 className="flex items-center gap-2 text-sm font-bold text-brand-blue mb-4">
-                        <Sparkles size={16} /> What's New in v1.4
+                        <Sparkles size={16} /> What's New in v2.0
                     </h3>
                     <ul className="space-y-3 text-sm text-slate-700 dark:text-slate-300 relative z-10">
                         <li>
-                            <strong className="text-slate-900 dark:text-white">💍 Spousal Multiplier [PRO]:</strong> Simulate a dual-income household. The engine perfectly isolates tax brackets so you aren't hit with a joint-income penalty.
+                            <strong className="text-slate-900 dark:text-white">🎲 Montiq Engine [BETA | PRO]:</strong> A massive new companion app. Seamlessly port your Fiducia data into Montiq to run 1,000 randomized Monte Carlo simulations and test your portfolio against historical market crashes.
                         </li>
                         <li>
-                            <strong className="text-slate-900 dark:text-white">📊 Cash Flow Anatomy [PRO]:</strong> A new 100% stacked bar chart that shows exactly how your Gross Salary is divided between Taxes, Investments, EMIs, and Disposable Income.
+                            <strong className="text-slate-900 dark:text-white">✨ The Great Simplification:</strong> Simple Mode has been entirely rewritten. It now hides complex tax logic and focuses purely on your "Liquid Wealth" (SIP + Savings) to give beginners a frictionless compounding experience.
                         </li>
                         <li>
-                            <strong className="text-slate-900 dark:text-white">🌪️ Life Event Shocks [BETA]:</strong> Add houses, weddings, and EMIs in today's money. The engine auto-inflates the costs and drains your corpus dynamically.
+                            <strong className="text-slate-900 dark:text-white">📖 Contextual Guides:</strong> We've introduced a progressive disclosure UI. Every section now features a dynamic info modal (top-right corner) that explains the exact logic and inputs depending on whether you are in Simple or Pro Mode.
+                        </li>
+                        <li>
+                            <strong className="text-slate-900 dark:text-white">🎨 Glassmorphic Polish:</strong> A unified, premium UI overhaul featuring smooth fluid accordions, sticky sub-navigation, and a cleaner component layout.
                         </li>
                     </ul>
                 </section>
@@ -93,9 +96,9 @@ export function InfoModal({ isOpen, onClose }) {
                             <h3 className="font-bold text-sm uppercase tracking-wide">Simple Mode</h3>
                         </div>
                         <ul className="text-xs space-y-2 text-slate-600 dark:text-slate-300">
-                            <li>• <strong>Focus:</strong> Speed & Cash Flow.</li>
-                            <li>• <strong>Assumption:</strong> Standard Tax deductions.</li>
-                            <li>• <strong>Visuals:</strong> Includes Compounding Graph.</li>
+                            <li>• <strong>Focus:</strong> Speed & Liquid Wealth.</li>
+                            <li>• <strong>Assumption:</strong> Tax-free withdrawal estimates.</li>
+                            <li>• <strong>Visuals:</strong> Pure Compounding Graphs.</li>
                             <li>• <strong>Best for:</strong> Quick estimations and beginners.</li>
                         </ul>
                     </div>
@@ -107,7 +110,7 @@ export function InfoModal({ isOpen, onClose }) {
                         </div>
                         <ul className="text-xs space-y-2 text-slate-600 dark:text-slate-300">
                             <li>• <strong>Focus:</strong> Precision & Tax Optimization.</li>
-                            <li>• <strong>Features:</strong> EPF, VPF Shadow Strategy.</li>
+                            <li>• <strong>Features:</strong> EPF, VPF, Life Event Shocks.</li>
                             <li>• <strong>Logic:</strong> Tracks overflows at ₹2.5L limit.</li>
                             <li>• <strong>Best for:</strong> High Net Worth individuals.</li>
                         </ul>

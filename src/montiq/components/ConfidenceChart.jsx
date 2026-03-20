@@ -54,22 +54,28 @@ export function ConfidenceChart() {
          {simulationResults ? (
             <div className="flex items-center gap-6">
                 <div className="text-right">
-                    <p className="text-[10px] uppercase text-slate-500 font-bold">Success Probability</p>
+                    <p className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">Success Probability</p>
                     <p className={`text-4xl font-black ${simulationResults.successRate > 80 ? 'text-brand-green' : 'text-brand-danger'}`}>
                         {simulationResults.successRate}%
                     </p>
                 </div>
-                <button onClick={handleRun} className="p-4 bg-brand-blue/10 hover:bg-brand-blue/20 border border-brand-blue/20 rounded-full transition-all text-brand-blue">
-                    <Play size={20} className="ml-1" />
+                <button 
+                    onClick={handleRun} 
+                    className="w-14 h-14 shrink-0 flex items-center justify-center bg-brand-blue/10 hover:bg-brand-blue/20 border border-brand-blue/20 rounded-full transition-all text-brand-blue hover:scale-105"
+                    title="Rerun Simulation"
+                >
+                    {/* ml-1 optically centers the triangle inside the geometric circle */}
+                    <Play size={24} fill="currentColor" className="ml-1" />
                 </button>
             </div>
          ) : (
             <button 
                 onClick={handleRun} 
                 disabled={!isReady}
-                className="flex items-center gap-2 bg-brand-blue hover:bg-brand-blue/90 text-white font-bold px-8 py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(14,165,233,0.3)] disabled:opacity-50 disabled:grayscale"
+                className="flex items-center justify-center gap-3 bg-brand-blue hover:bg-brand-blue/90 text-white font-bold px-8 py-4 rounded-xl transition-all shadow-[0_4px_20px_rgba(14,165,233,0.3)] disabled:opacity-50 disabled:grayscale"
             >
-                <Play size={18} /> RUN 1,000 SIMULATIONS
+                <Play size={20} fill="currentColor" />
+                <span>RUN 1,000 SIMULATIONS</span>
             </button>
          )}
       </div>

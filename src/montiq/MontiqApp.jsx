@@ -6,6 +6,7 @@ import { StrategyDeck } from './components/StrategyDeck';
 import { ConfidenceChart } from './components/ConfidenceChart';
 import { MontiqInfoModal } from './components/MontiqInfoModal';
 import { Info } from 'lucide-react';
+import { MontiqFooter } from './components/MontiqFooter';
 
 // Simplified Surface Group with external Modal Trigger
 const SurfaceGroup = ({ title, children, delayClass = "", onInfoClick }) => (
@@ -85,6 +86,8 @@ export function MontiqApp() {
            activeModal={activeModal} 
            onClose={() => setActiveModal(null)} 
         />
+
+        <MontiqFooter />
         
       </div>
     </MontiqProvider>
