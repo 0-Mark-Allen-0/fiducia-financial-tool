@@ -18,19 +18,17 @@ export const FinancialProvider = ({ children }) => {
 
   // --- SPOUSAL SIMULATOR STATE ---
   const [isSpouseEnabled, setIsSpouseEnabled] = useState(false);
-  const [spousalMultiplier, setSpousalMultiplier] = useState(2.0); // 2.0 = 100% Match
+  const [spousalMultiplier, setSpousalMultiplier] = useState(2.0); 
   const [spousalStartYear, setSpousalStartYear] = useState(1);
 
-  // --- NEW: LIFE EVENT ENGINE STATE ---
-  // Array of objects representing shocks to the timeline.
-  // Example Event: { id: 1, name: "House Downpayment", amount: 5000000, type: "one-time", startYear: 5, endYear: 5, target: "sip", isFixed: false }
+  // --- LIFE EVENT ENGINE STATE ---
   const [lifeEvents, setLifeEvents] = useState([]);
 
   // --- 2. INPUT STATES ---
   const [sipInput, setSipInput] = useState({
     amount: 15000,
     stepUp: 10,
-    returnRate: 12,
+    returnRate: 10,
     horizon: 15, 
   });
 
@@ -41,9 +39,12 @@ export const FinancialProvider = ({ children }) => {
     horizon: 15,
   });
 
+  // NEW: Tax Optimization Split (0 = 100% FD, 100 = 100% Arbitrage)
+  const [savingsTaxSplit, setSavingsTaxSplit] = useState(50); 
+
   const [epfInput, setEpfInput] = useState({
     salary: 100000,   
-    basicPercent: 50,
+    basicPercent: 40,
     hike: 10,
     rate: 8.25,
     empContrib: 12,
@@ -63,12 +64,12 @@ export const FinancialProvider = ({ children }) => {
 
   const [swpInput, setSwpInput] = useState({
     corpus: 20000000,
-    returnRate: 8,
+    returnRate: 7,
     inflation: 6,
     horizon: 20,
     method: 'swr',
     val: 4,
-    gainProp: 50,
+    gainProp: 63,
     ltcg: 12.5,
   });
 
@@ -84,7 +85,6 @@ export const FinancialProvider = ({ children }) => {
     setSpousalStartYear(prev => Math.min(prev, validVal));
   };
 
-  // --- 3. OUTPUT DATA (Structured for Tabs) ---
   const [dashboardData, setDashboardData] = useState({
     summary: { total: 0, corpus: 0, gains: 0 },
     salarySeries: [],
@@ -111,7 +111,7 @@ export const FinancialProvider = ({ children }) => {
         spousalStartYear
     });
 
-    // STEP 2: EPF/VPF (Shadow Ledger & Strategy)
+    // STEP 2: EPF/VPF
     const epfResults = calculateEPF_VPF_Pro({
         salarySeries: salaryData,
         basicPercent: epfInput.basicPercent,
@@ -128,7 +128,7 @@ export const FinancialProvider = ({ children }) => {
         spousalStartYear
     });
 
-    // STEP 3: Route Overflows & Inject CORPUS SHOCKS (One-Time Life Events)
+    // STEP 3: Route Overflows & Inject CORPUS SHOCKS
     let sipOverflow = new Array(masterHorizon).fill(0);
     let savOverflow = new Array(masterHorizon).fill(0);
 
@@ -137,7 +137,6 @@ export const FinancialProvider = ({ children }) => {
         const epfArr = epfResults.epfOverflowSeries || [];
 
         for (let i = 0; i < masterHorizon; i++) {
-            // Route VPF/EPF Overflows
             if (vpfInput.strategy === 'sip') sipOverflow[i] += (vpfArr[i] || 0);
             if (vpfInput.strategy === 'save') savOverflow[i] += (vpfArr[i] || 0);
 
@@ -148,16 +147,11 @@ export const FinancialProvider = ({ children }) => {
         }
     }
 
-    // --- NEW: INJECT CORPUS SHOCKS ---
     lifeEvents.forEach(event => {
         if (event.type === 'one-time') {
-            const yIndex = event.startYear - 1; // Array is 0-indexed, years are 1-indexed
+            const yIndex = event.startYear - 1; 
             if (yIndex >= 0 && yIndex < masterHorizon) {
-                // Auto-Inflate: The user inputs "Today's Money" (Present Value). 
-                // The engine dynamically calculates the Future Value (FV) for that specific year.
                 const futureValue = event.amount * Math.pow(1 + inflationRate / 100, event.startYear);
-                
-                // Inject massive negative flow into the designated bucket
                 if (event.target === 'sip') sipOverflow[yIndex] -= futureValue;
                 if (event.target === 'save') savOverflow[yIndex] -= futureValue;
             }
@@ -165,6 +159,7 @@ export const FinancialProvider = ({ children }) => {
     });
 
     // STEP 4: Calculate Investments (SIP & Savings)
+    // Both engines now receive Pro Mode status and Salary data for Marginal Tax tracking
     const sipResults = calculateInvestment({
         monthlyStart: sipInput.amount,
         stepUp: sipInput.stepUp,
@@ -175,7 +170,10 @@ export const FinancialProvider = ({ children }) => {
         extraFlows: sipOverflow,
         isSpouseEnabled, 
         spousalMultiplier, 
-        spousalStartYear 
+        spousalStartYear,
+        isProMode,
+        isSavings: false,
+        salarySeries: salaryData 
     });
 
     const savResults = calculateInvestment({
@@ -188,13 +186,15 @@ export const FinancialProvider = ({ children }) => {
         extraFlows: savOverflow,
         isSpouseEnabled, 
         spousalMultiplier, 
-        spousalStartYear 
+        spousalStartYear,
+        isProMode,
+        isSavings: true, // Triggers Tax Drag logic
+        savingsTaxSplit, 
+        salarySeries: salaryData
     });
 
-    // STEP 5: Aggregate Net Worth & Calculate CASHFLOW SHOCKS (Recurring EMIs)
+    // STEP 5: Aggregate Net Worth & Calculate CASHFLOW SHOCKS
     let netWorthSeries = [];
-    
-    // NEW: Tracker to catch the first instance of bankruptcy
     let firstBankruptcy = null;
 
     for (let i = 0; i < masterHorizon; i++) {
@@ -204,18 +204,9 @@ export const FinancialProvider = ({ children }) => {
         const epfItem = epfResults.epfSeries[i] || {};
         const vpfItem = epfResults.vpfSeries[i] || {};
 
-        // A. Net Worth
-        const totalNominal = (sipItem.corpusNominal || 0) 
-                           + (savItem.corpusNominal || 0) 
-                           + (epfItem.corpusNominal || 0) 
-                           + (vpfItem.corpusNominal || 0);
+        const totalNominal = (sipItem.corpusNominal || 0) + (savItem.corpusNominal || 0) + (epfItem.corpusNominal || 0) + (vpfItem.corpusNominal || 0);
+        const totalReal = (sipItem.corpusReal || 0) + (savItem.corpusReal || 0) + (epfItem.corpusReal || 0) + (vpfItem.corpusReal || 0);
 
-        const totalReal = (sipItem.corpusReal || 0) 
-                        + (savItem.corpusReal || 0) 
-                        + (epfItem.corpusReal || 0) 
-                        + (vpfItem.corpusReal || 0);
-
-        // CALCULATE YEARLY CASHFLOW SHOCKS
         let yearlyCashflowShocks = 0;
         const currentYear = i + 1;
 
@@ -234,7 +225,6 @@ export const FinancialProvider = ({ children }) => {
             }
         });
 
-        // B. Disposable Income Calculation
         const isEpfActive = (i + 1) <= epfInput.horizon;
         let mandatoryEpfEmpYearly = epfItem.yearlyEmployeeNominal || 0;
         
@@ -246,18 +236,12 @@ export const FinancialProvider = ({ children }) => {
            mandatoryEpfEmpYearly = (basicYearly * (epfInput.empContrib / 100)) * activeMultiplier;
         }
 
-        const totalInvestmentOutflow = (sipItem.yearlyNominal || 0) 
-                                     + (savItem.yearlyNominal || 0) 
-                                     + (vpfItem.yearlyNominal || 0) 
-                                     + mandatoryEpfEmpYearly;
-
+        const totalInvestmentOutflow = (sipItem.yearlyNominal || 0) + (savItem.yearlyNominal || 0) + (vpfItem.yearlyNominal || 0) + mandatoryEpfEmpYearly;
         const extraTax = (epfResults.employerTaxDragSeries && epfResults.employerTaxDragSeries[i]) || 0;
 
         const disposableNominal = (salaryItem.netYearly || 0) - totalInvestmentOutflow - extraTax - yearlyCashflowShocks;
         const infFactor = Math.pow(1 + (inflationRate/100), i+1);
 
-        // NEW: DETECT BANKRUPTCY
-        // We only record the first one we find so the UI doesn't spam the user.
         if (!firstBankruptcy) {
             if (sipItem.isBankrupt) {
                 firstBankruptcy = { type: 'SIP Portfolio', year: currentYear, shortfall: sipItem.shortfallNominal };
@@ -279,7 +263,7 @@ export const FinancialProvider = ({ children }) => {
         });
     }
 
-// STEP 6: SWP Calculation 
+    // STEP 6: SWP Calculation 
     const swpResults = calculateSWP({
         corpus: swpInput.corpus,
         method: swpInput.method,
@@ -287,22 +271,16 @@ export const FinancialProvider = ({ children }) => {
         returnRate: swpInput.returnRate,
         inflationRate: swpInput.inflation,
         years: swpInput.horizon,
-        // DYNAMIC TAX ZEROING FOR SIMPLE MODE
         ltcgRate: isProMode ? swpInput.ltcg : 0,
         gainProp: isProMode ? swpInput.gainProp : 0
     });
 
-    // STEP 7: Year 1 Cash Flow Snapshot
     const y1Salary = salaryData[0] || {};
     const y1NetWorth = netWorthSeries[0] || {};
     
-    // Update State
     setDashboardData({
         summary: {
-            // DYNAMIC TOTAL: Liquid Wealth (Simple) vs Full Net Worth (Pro)
-            total: isProMode 
-                ? (sipResults.finalValue + savResults.finalValue + epfResults.totalEPF + epfResults.totalVPF)
-                : (sipResults.finalValue + savResults.finalValue),
+            total: isProMode ? (sipResults.finalValue + savResults.finalValue + epfResults.totalEPF + epfResults.totalVPF) : (sipResults.finalValue + savResults.finalValue),
         },
         salarySeries: salaryData,
         epfSeries: epfResults.epfSeries,
@@ -319,24 +297,21 @@ export const FinancialProvider = ({ children }) => {
         }
     });
 
-  // Ensure lifeEvents is added to the dependency array!
-  }, [sipInput, savInput, epfInput, vpfInput, swpInput, isProMode, inflationRate, masterHorizon, isSpouseEnabled, spousalMultiplier, spousalStartYear, lifeEvents]);
+  // Ensure savingsTaxSplit is added to the dependency array!
+  }, [sipInput, savInput, epfInput, vpfInput, swpInput, isProMode, savingsTaxSplit, inflationRate, masterHorizon, isSpouseEnabled, spousalMultiplier, spousalStartYear, lifeEvents]);
 
   return (
     <FinancialContext.Provider value={{
       isProMode, setIsProMode,
       inflationRate, setInflationRate,
       masterHorizon, updateMasterHorizon,
-      
       isSpouseEnabled, setIsSpouseEnabled,
       spousalMultiplier, setSpousalMultiplier,
       spousalStartYear, setSpousalStartYear,
-
-      // Export Life Events State
       lifeEvents, setLifeEvents,
-
       sipInput, setSipInput,
       savInput, setSavInput,
+      savingsTaxSplit, setSavingsTaxSplit, // NEW
       epfInput, setEpfInput,
       vpfInput, setVpfInput,
       swpInput, setSwpInput,

@@ -124,7 +124,7 @@ const Dashboard = () => {
         headerAction={isProMode && (
           <button
             onClick={() => setIsMontiqModalOpen(true)}
-            className="flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-1.5 rounded-full text-xs font-bold hover:scale-105 transition-transform shadow-sm"
+            className="flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2 rounded-full text-xs font-bold hover:scale-105 transition-transform shadow-sm"
           >
             <Activity size={14} className="text-brand-green" />
             Advanced

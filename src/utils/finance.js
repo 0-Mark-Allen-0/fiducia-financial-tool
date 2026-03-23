@@ -290,14 +290,19 @@ export const calculateEPF_VPF_Pro = ({
 
 /**
  * 3. INVESTMENT ENGINE (SIP / SAVINGS)
+ * UPGRADE: Dynamically calculates Marginal Tax vs LTCG Drag for the Safety Net.
  */
 export const calculateInvestment = ({
   monthlyStart, stepUp, returnRate, inflationRate, activeYears, totalYears,  
-  extraFlows = [], isSpouseEnabled, spousalMultiplier, spousalStartYear
+  extraFlows = [], isSpouseEnabled, spousalMultiplier, spousalStartYear,
+  isProMode = false,
+  isSavings = false,
+  savingsTaxSplit = 50,
+  salarySeries = []
 }) => {
   let corpus = 0; 
+  let corpusGross = 0; // Shadow ledger to track what you WOULD have made without taxes
   let currentMonthly = monthlyStart;
-  let monthlyRate = returnRate / 12 / 100;
   let series = [];
 
   for (let y = 1; y <= totalYears; y++) {
@@ -307,46 +312,73 @@ export const calculateInvestment = ({
     let baseYearlyFlow = 0;
     let extraYearlyFlow = extraFlows[y-1] || 0; 
     
-    // METHOD 1 FIX: Segregate Positive Inflows (Diversions) from Negative Outflows (Shocks)
     let diversionInflow = Math.max(0, extraYearlyFlow);
-    let shockOutflow = Math.min(0, extraYearlyFlow); // This is a negative number
+    let shockOutflow = Math.min(0, extraYearlyFlow); 
     
     let isReceivingDiversion = diversionInflow > 0;
-
     let activeMonthlyInput = isActive ? (currentMonthly * activeMultiplier) : 0;
-    
-    // Monthly compounding ONLY applies the positive inputs to smooth out the curve
     let totalMonthlyInput = activeMonthlyInput + (diversionInflow / 12);
 
+    // --- NEW: THE TAX DRAG CALCULATION ---
+    let grossAnnualRate = returnRate / 100;
+    let netAnnualRate = grossAnnualRate;
+    let marginalRate = 0;
+
+    // Only apply the drag to the Savings bucket in Pro Mode
+    if (isProMode && isSavings && salarySeries[y-1]) {
+        // Find marginal tax bracket based on current primary salary
+        const primaryGrossYearly = salarySeries[y-1].grossYearly / activeMultiplier;
+        marginalRate = getMarginalTaxRate(primaryGrossYearly);
+
+        let arbPercentage = savingsTaxSplit / 100;
+        let fdPercentage = 1 - arbPercentage;
+
+        // Apply Slab to FD, Apply 12.5% LTCG to Arbitrage
+        let fdNetReturn = grossAnnualRate * (1 - marginalRate);
+        let arbNetReturn = grossAnnualRate * (1 - 0.125); 
+
+        netAnnualRate = (fdPercentage * fdNetReturn) + (arbPercentage * arbNetReturn);
+    }
+
+    let monthlyRateNet = netAnnualRate / 12;
+    let monthlyRateGross = grossAnnualRate / 12;
+
     for (let m = 1; m <= 12; m++) {
-      corpus = (corpus + totalMonthlyInput) * (1 + monthlyRate);
+      // Compound the real taxable corpus
+      corpus = (corpus + totalMonthlyInput) * (1 + monthlyRateNet);
+      // Compound the shadow gross corpus to track tax losses
+      corpusGross = (corpusGross + totalMonthlyInput) * (1 + monthlyRateGross);
       if (isActive) baseYearlyFlow += (currentMonthly * activeMultiplier);
     }
 
-    // METHOD 2 FIX: Apply the shock outflow at year-end and check for bankruptcy
-    corpus += shockOutflow; // shockOutflow is negative, so this subtracts
+    corpus += shockOutflow; 
+    corpusGross += shockOutflow;
     
     let shortfall = 0;
     let isBankrupt = false;
     
     if (corpus < 0) {
         isBankrupt = true;
-        shortfall = Math.abs(corpus); // Track exactly how much cash they were missing
-        corpus = 0; // The Zero-Floor: Prevents janky inverted charts
+        shortfall = Math.abs(corpus); 
+        corpus = 0; 
+        corpusGross = 0;
     }
 
-    // yearlyNominal now ONLY tracks money deposited, ignoring liquidations!
     let totalYearlyFlow = baseYearlyFlow + diversionInflow;
     let infFactor = getInfFactor(inflationRate, y);
+    
+    // The difference between the shadow ledger and real ledger is exactly the tax lost
+    let taxDragNominal = Math.max(0, corpusGross - corpus);
 
     series.push({
       year: y,
       monthlyNominal: totalMonthlyInput,
       monthlyReal: totalMonthlyInput / infFactor,
-      yearlyNominal: totalYearlyFlow, // This fixes the disposable income spike!
+      yearlyNominal: totalYearlyFlow, 
       yearlyReal: totalYearlyFlow / infFactor,
       corpusNominal: corpus,
       corpusReal: corpus / infFactor,
+      taxDragNominal: taxDragNominal, // NEW EXPORT
       isActive: isActive,
       isReceivingDiversion: isReceivingDiversion,
       isBankrupt: isBankrupt,
@@ -363,7 +395,6 @@ export const calculateInvestment = ({
     series: series
   };
 };
-
 /**
  * 4. SWP ENGINE (RETIREMENT)
  * Unchanged. Operates on the final corpus value after the accumulation phase.

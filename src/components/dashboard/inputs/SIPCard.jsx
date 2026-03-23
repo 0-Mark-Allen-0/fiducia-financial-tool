@@ -60,7 +60,7 @@ export function SIPCard() {
         <div className="overflow-hidden">
           <div className="px-5 sm:px-6 pb-5 sm:pb-6 flex flex-col pt-2 border-t border-black/5 dark:border-white/5 mt-2">
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="col-span-2">
+              <div className="col-span-1">
                   <InputGroup label="Monthly SIP (₹)" value={sipInput.amount} onChange={(v) => update('amount', v)} isCurrency />
               </div>
               <InputGroup label="Step-up (%)" value={sipInput.stepUp} onChange={(v) => update('stepUp', v)} />

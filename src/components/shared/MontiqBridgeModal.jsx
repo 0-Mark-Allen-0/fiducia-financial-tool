@@ -81,7 +81,7 @@ export function MontiqBridgeModal({ isOpen, onClose }) {
 
         <div className="p-6 sm:p-8 space-y-6">
             <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                You are about to leave Fiducia and enter the Quant Lab. Montiq is our advanced, stochastic retirement engine. 
+                You are about to leave Fiducia and enter <strong>Montiq</strong>. Montiq is our advanced, stochastic retirement scenario engine. 
             </p>
 
             <div className="space-y-4">

@@ -47,7 +47,7 @@ export function ConfidenceChart() {
       
       <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
          <div>
-            <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-1">Monte Carlo Projection</h2>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-1">Monte Carlo Backtest</h2>
             <p className="text-xs text-slate-500">1,000 randomized historical lifetimes based on Nifty 50 and Bond yields.</p>
          </div>
 

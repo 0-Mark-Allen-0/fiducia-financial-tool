@@ -3,10 +3,10 @@ import { useFinancialData } from '../../../context/FinancialContext';
 import { InputGroup } from '../../shared/InputGroup';
 import { ResultRow } from '../../shared/ResultRow';
 import { Landmark, CornerDownRight, ChevronDown } from 'lucide-react';
-import { formatUnit } from '../../../utils/format';
+import { formatUnit, formatCurrency } from '../../../utils/format';
 
 export function SavingsCard() {
-  const { savInput, setSavInput, dashboardData, isProMode, vpfInput, masterHorizon } = useFinancialData();
+  const { savInput, setSavInput, dashboardData, isProMode, vpfInput, masterHorizon, savingsTaxSplit, setSavingsTaxSplit } = useFinancialData();
   const [isOpen, setIsOpen] = useState(false);
 
   const update = (field, val) => setSavInput(prev => ({ ...prev, [field]: val }));
@@ -14,6 +14,7 @@ export function SavingsCard() {
   const series = dashboardData.savSeries || [];
   const finalData = series[series.length - 1] || {};
   const totalValue = finalData.corpusNominal || 0;
+  const taxDrag = finalData.taxDragNominal || 0; // NEW: Plucked from the engine
 
   const isReceiving = isProMode && vpfInput.strategy === 'save';
 
@@ -52,27 +53,63 @@ export function SavingsCard() {
         </div>
       </div>
 
-      {/* FLUID ACCORDION ANIMATION */}
       <div className={`grid transition-all duration-300 ease-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
         <div className="overflow-hidden">
           <div className="px-5 sm:px-6 pb-5 sm:pb-6 flex flex-col pt-2 border-t border-black/5 dark:border-white/5 mt-2">
+            
+            {/* ROW 1 & ROW 2: Redesigned grid layout */}
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="col-span-2">
-                  <InputGroup label="Monthly Save (₹)" value={savInput.amount} onChange={(v) => update('amount', v)} isCurrency />
-              </div>
+              <InputGroup label="Monthly Save (₹)" value={savInput.amount} onChange={(v) => update('amount', v)} isCurrency />
               <InputGroup label="Step-up (%)" value={savInput.stepUp} onChange={(v) => update('stepUp', v)} />
+              
               <InputGroup label="Return (%)" value={savInput.returnRate} onChange={(v) => update('returnRate', v)} step="0.1" />
               <InputGroup label="Horizon (Yrs)" value={savInput.horizon} onChange={(v) => update('horizon', v)} min={1} max={masterHorizon} />
             </div>
 
+            {/* ROW 3: Arbitrage / Tax Split Slider */}
+            {isProMode && (
+                <div className="mb-6 animate-in fade-in duration-500">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase block mb-3">
+                        Tax Optimization Split
+                    </label>
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-xs font-bold mb-1">
+                            <span className="text-slate-300">Arbitrage ({savingsTaxSplit}%)</span>
+                            <span className="text-slate-300">FDs ({100 - savingsTaxSplit}%)</span>
+                        </div>
+                        <input 
+                            type="range" min="0" max="100" 
+                            value={savingsTaxSplit} 
+                            onChange={(e) => setSavingsTaxSplit(Number(e.target.value))} 
+                            className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg accent-brand-purple" 
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* RESULT ROW */}
             <div className="mt-auto bg-slate-50/50 dark:bg-black/20 p-4 rounded-xl">
               <ResultRow label="Final Value" value={totalValue} />
+              
+              {/* Render the massive Tax Drag penalty if in Pro Mode */}
+              {isProMode && taxDrag > 0 && (
+                <div className="pt-2 mt-2 border-t border-slate-200/50 dark:border-white/10 flex justify-between text-sm">
+                    <span className="text-slate-500 font-medium text-xs flex items-center gap-1">
+                      Lost to Taxation:
+                    </span>
+                    <span className="text-brand-danger font-bold text-xs opacity-90">
+                      {formatCurrency(taxDrag)}
+                    </span>
+                </div>
+              )}
+
               {isReceiving && (
                   <p className="text-[10px] text-brand-purple mt-2 text-center opacity-80">
                       * Includes diverted funds from VPF/EPF overflow
                   </p>
               )}
             </div>
+
           </div>
         </div>
       </div>

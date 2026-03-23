@@ -61,8 +61,8 @@ export function ResultsSection() {
   // 1. SALARY TABLE (Pro Mode Only)
   if (activeTab === 'salary') {
     const headers = [
-      "Year", "Gross (Monthly)", "Post-Tax (Monthly)", "Disposable (Monthly)", 
-      "Gross (Yearly)", "Post-Tax (Yearly)", "Liabilities (Yearly)", "Disposable (Yearly)"
+      "Year", "Gross (Mon.)", "Post-Tax (Mon.)", "Disposable (Mon.)", 
+      "Gross (Yr.)", "Post-Tax (Yr.)", "Liabilities (Yr.)", "Disposable (Yr.)"
     ];
     
     return (
@@ -236,7 +236,12 @@ export function ResultsSection() {
     colorClass = "text-brand-green";
   }
 
-  const headers = ["Year", "Monthly Contribution", "Yearly Contribution", "Total Corpus (Nominal)", "Total Corpus (Real)"];
+  // UPDATED: Dynamically inject the "Tax Drag" header for Savings in Pro Mode
+  const isSavingsTaxView = activeTab === 'sav' && isProMode;
+  let headers = ["Year", "Contribution (Mon.)", "Contribution (Yr.)", "Total (Nominal)", "Total (Real)"];
+  if (isSavingsTaxView) {
+      headers.push("Tax Drag (Overall)");
+  }
 
   return (
     <div className="w-full">
@@ -245,9 +250,11 @@ export function ResultsSection() {
         title={title}
         subTitle="Breakdown of contributions and compounding growth."
         headers={headers}
-        onExport={() => exportCSV(`${activeTab}_Ledger`, headers, currentSeries.map(d => [
-            d.year, d.monthlyNominal, d.yearlyNominal, d.corpusNominal, d.corpusReal
-        ]))}
+        onExport={() => exportCSV(`${activeTab}_Ledger`, headers, currentSeries.map(d => {
+            const row = [d.year, d.monthlyNominal, d.yearlyNominal, d.corpusNominal, d.corpusReal];
+            if (isSavingsTaxView) row.push(d.taxDragNominal || 0);
+            return row;
+        }))}
       >
         {currentSeries.map((d, index) => {
           const isTransitionRow = !d.isActive && index > 0 && currentSeries[index - 1].isActive;
@@ -257,7 +264,7 @@ export function ResultsSection() {
               
               {isTransitionRow && (
                 <tr>
-                  <td colSpan={5} className="bg-brand-blue/5 dark:bg-brand-blue/10 px-6 py-3 border-y border-brand-blue/20">
+                  <td colSpan={isSavingsTaxView ? 6 : 5} className="bg-brand-blue/5 dark:bg-brand-blue/10 px-6 py-3 border-y border-brand-blue/20">
                     <div className="flex items-center justify-center gap-2 text-xs font-bold text-brand-blue uppercase tracking-wider">
                       <PauseCircle size={14} />
                       Contributions Stopped — Passive Compounding Phase
@@ -323,9 +330,17 @@ export function ResultsSection() {
                     {formatCurrency(d.corpusNominal)}
                     <span className="text-xs font-normal text-slate-400 ml-1">{formatUnit(d.corpusNominal)}</span>
                 </td>
+                
                 <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
                     {formatCurrency(d.corpusReal)}
                 </td>
+
+                {/* NEW: Render the Tax Drag cell if this is the Savings tab in Pro Mode */}
+                {isSavingsTaxView && (
+                    <td className="px-6 py-4 text-brand-danger font-medium opacity-90">
+                        {d.taxDragNominal > 0 ? `-${formatCurrency(d.taxDragNominal)}` : '₹0'}
+                    </td>
+                )}
               </tr>
             </React.Fragment>
           );

@@ -77,8 +77,11 @@ export function InfoModal({ isOpen, onClose }) {
                             <strong className="text-slate-900 dark:text-white">🎲 Montiq Engine [BETA | PRO]:</strong> A massive new companion app. Seamlessly port your Fiducia data into Montiq to run 1,000 randomized Monte Carlo simulations and test your portfolio against historical market crashes.
                         </li>
                         <li>
-                            <strong className="text-slate-900 dark:text-white">✨ The Great Simplification:</strong> Simple Mode has been entirely rewritten. It now hides complex tax logic and focuses purely on your "Liquid Wealth" (SIP + Savings) to give beginners a frictionless compounding experience.
+                            <strong className="text-slate-900 dark:text-white">💷 Savings Taxation [PRO]:</strong> You can now adjust the percentage split of your savings between equity (for e.g. arbitrage) and debt (for e.g. liquid funds, recurring deposits). The returns are taxed based on your slab / LTCG based on the investment instrument. Kindly note that LTCG on arbitrage is calculated every year to avoid mathematical overhead and convolution. The silver lining is that this is a pessimistic projection! 
                         </li>
+                        <li>
+                            <strong className="text-slate-900 dark:text-white">✨ The Great Simplification:</strong> Simple Mode has been entirely rewritten. It now hides complex tax logic and focuses purely on your "Liquid Wealth" (SIP + Savings) to give beginners a frictionless compounding experience.
+                        </li> 
                         <li>
                             <strong className="text-slate-900 dark:text-white">📖 Contextual Guides:</strong> We've introduced a progressive disclosure UI. Every section now features a dynamic info modal (top-right corner) that explains the exact logic and inputs depending on whether you are in Simple or Pro Mode.
                         </li>
