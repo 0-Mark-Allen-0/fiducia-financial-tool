@@ -74,10 +74,13 @@ export function InfoModal({ isOpen, onClose }) {
                     </h3>
                     <ul className="space-y-3 text-sm text-slate-700 dark:text-slate-300 relative z-10">
                         <li>
-                            <strong className="text-slate-900 dark:text-white">🎲 Montiq Engine [BETA | PRO]:</strong> A massive new companion app. Seamlessly port your Fiducia data into Montiq to run 1,000 randomized Monte Carlo simulations and test your portfolio against historical market crashes.
+                            <strong className="text-slate-900 dark:text-white">🎲 Montiq Engine [BETA | PRO]:</strong> A massive new companion app. Seamlessly port your Fiducia data into Montiq to run 1,000 randomized Monte Carlo simulations and test your portfolio against historical market crashes. Add one-time retirement expenses to see how your choices impact your cash flow. Adjust your withdrawal strategies to conquer retirement!
                         </li>
                         <li>
                             <strong className="text-slate-900 dark:text-white">💷 Savings Taxation [PRO]:</strong> You can now adjust the percentage split of your savings between equity (for e.g. arbitrage) and debt (for e.g. liquid funds, recurring deposits). The returns are taxed based on your slab / LTCG based on the investment instrument. Kindly note that LTCG on arbitrage is calculated every year to avoid mathematical overhead and convolution. The silver lining is that this is a pessimistic projection! 
+                        </li>
+                        <li>
+                            <strong className="text-slate-900 dark:text-white">🤑 Revised Taxation [PRO]:</strong> Fiducia & Montiq have been updated with bucket-based taxation for Equity (LTCG) and Debt (Slab-based). This creates a more accurate simulation.
                         </li>
                         <li>
                             <strong className="text-slate-900 dark:text-white">✨ The Great Simplification:</strong> Simple Mode has been entirely rewritten. It now hides complex tax logic and focuses purely on your "Liquid Wealth" (SIP + Savings) to give beginners a frictionless compounding experience.

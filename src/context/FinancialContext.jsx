@@ -263,9 +263,25 @@ export const FinancialProvider = ({ children }) => {
         });
     }
 
-    // STEP 6: SWP Calculation 
+    // --- STEP 6: SWP Calculation (PROPORTIONAL BUCKETING UPGRADE) ---
+    // 1. Extract the actual final accumulated values
+    const actualEquity = sipResults.finalValue || 0;
+    const actualCash = savResults.finalValue || 0;
+    const actualDebt = isProMode ? ((epfResults.totalEPF || 0) + (epfResults.totalVPF || 0)) : 0;
+    const actualTotal = actualEquity + actualCash + actualDebt;
+
+    // 2. Calculate their percentage weights
+    let eqPct = 1, dbPct = 0, csPct = 0;
+    if (actualTotal > 0) {
+        eqPct = actualEquity / actualTotal;
+        dbPct = actualDebt / actualTotal;
+        csPct = actualCash / actualTotal;
+    }
+
+    // 3. Feed the percentages into the SWP Engine
     const swpResults = calculateSWP({
         corpus: swpInput.corpus,
+        eqPct, dbPct, csPct,
         method: swpInput.method,
         val: swpInput.val,
         returnRate: swpInput.returnRate,
@@ -282,40 +298,16 @@ export const FinancialProvider = ({ children }) => {
         summary: {
             total: isProMode ? (sipResults.finalValue + savResults.finalValue + epfResults.totalEPF + epfResults.totalVPF) : (sipResults.finalValue + savResults.finalValue),
         },
-        salarySeries: salaryData,
-        epfSeries: epfResults.epfSeries,
-        vpfSeries: epfResults.vpfSeries,
-        sipSeries: sipResults.series,
-        savSeries: savResults.series,
-        netWorthSeries: netWorthSeries,
-        swpSeries: swpResults,
-        cashFlow: {
-            income: epfInput.salary,
-            netSalary: y1Salary.netYearly / 12, 
-            disposable: y1NetWorth.disposableNominal / 12, 
-            isNegative: y1NetWorth.isNegative
-        }
+        salarySeries: salaryData, epfSeries: epfResults.epfSeries, vpfSeries: epfResults.vpfSeries, sipSeries: sipResults.series, savSeries: savResults.series, netWorthSeries: netWorthSeries, swpSeries: swpResults,
+        cashFlow: { income: epfInput.salary, netSalary: y1Salary.netYearly / 12, disposable: y1NetWorth.disposableNominal / 12, isNegative: y1NetWorth.isNegative },
+        swpBuckets: { equity: eqPct * 100, debt: dbPct * 100, cash: csPct * 100 } // Export to UI
     });
 
-  // Ensure savingsTaxSplit is added to the dependency array!
   }, [sipInput, savInput, epfInput, vpfInput, swpInput, isProMode, savingsTaxSplit, inflationRate, masterHorizon, isSpouseEnabled, spousalMultiplier, spousalStartYear, lifeEvents]);
 
   return (
     <FinancialContext.Provider value={{
-      isProMode, setIsProMode,
-      inflationRate, setInflationRate,
-      masterHorizon, updateMasterHorizon,
-      isSpouseEnabled, setIsSpouseEnabled,
-      spousalMultiplier, setSpousalMultiplier,
-      spousalStartYear, setSpousalStartYear,
-      lifeEvents, setLifeEvents,
-      sipInput, setSipInput,
-      savInput, setSavInput,
-      savingsTaxSplit, setSavingsTaxSplit, // NEW
-      epfInput, setEpfInput,
-      vpfInput, setVpfInput,
-      swpInput, setSwpInput,
-      dashboardData, 
+      isProMode, setIsProMode, inflationRate, setInflationRate, masterHorizon, updateMasterHorizon, isSpouseEnabled, setIsSpouseEnabled, spousalMultiplier, setSpousalMultiplier, spousalStartYear, setSpousalStartYear, lifeEvents, setLifeEvents, sipInput, setSipInput, savInput, setSavInput, savingsTaxSplit, setSavingsTaxSplit, epfInput, setEpfInput, vpfInput, setVpfInput, swpInput, setSwpInput, dashboardData, 
     }}>
       {children}
     </FinancialContext.Provider>

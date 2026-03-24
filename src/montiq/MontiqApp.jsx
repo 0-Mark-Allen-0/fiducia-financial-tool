@@ -8,6 +8,7 @@ import { MontiqInfoModal } from './components/MontiqInfoModal';
 import { Info } from 'lucide-react';
 import { MontiqFooter } from './components/MontiqFooter';
 import { MontiqTimelineTable } from './components/MontiqTimelineTable';
+import { OneTimeShocks } from './components/OneTimeShocks';
 
 // Simplified Surface Group with external Modal Trigger
 const SurfaceGroup = ({ title, children, delayClass = "", onInfoClick }) => (
@@ -39,11 +40,11 @@ export function MontiqApp() {
   return (
     <MontiqProvider>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-300 flex flex-col font-sans relative">
-        
         <MontiqHeader />
         
         <main className="flex-grow w-full max-w-[1440px] mx-auto px-4 py-8 sm:py-12 flex flex-col gap-10 sm:gap-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
           
+          {/* Header Banner */}
           <div className="w-full bg-gradient-to-br from-slate-800 to-slate-900 dark:from-slate-900 dark:to-black z-0 text-white p-8 md:p-10 rounded-[32px] text-center shadow-2xl relative overflow-hidden group mb-2">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-1/2 bg-brand-blue/20 blur-[100px] rounded-full group-hover:bg-brand-blue/30 transition-all duration-700"></div>
             <div className="relative z-10 max-w-2xl mx-auto">
@@ -61,37 +62,24 @@ export function MontiqApp() {
             delayClass="delay-100" 
             onInfoClick={() => setActiveModal('config')}
           >
+            {/* The separated components */}
             <AssetBuilder />
+            <OneTimeShocks />
           </SurfaceGroup>
 
-          <SurfaceGroup 
-            title="Mitigation Tactics" 
-            delayClass="delay-200" 
-            onInfoClick={() => setActiveModal('tactics')}
-          >
+          <SurfaceGroup title="Mitigation Tactics" delayClass="delay-200" onInfoClick={() => setActiveModal('tactics')}>
             <StrategyDeck />
           </SurfaceGroup>
 
-          <SurfaceGroup 
-            title="Stochastic Projections" 
-            delayClass="delay-300" 
-            onInfoClick={() => setActiveModal('projections')}
-          >
+          <SurfaceGroup title="Stochastic Projections" delayClass="delay-300" onInfoClick={() => setActiveModal('projections')}>
             <ConfidenceChart />
-
             <MontiqTimelineTable />
           </SurfaceGroup>
 
         </main>
 
-        {/* The Isolated Modal Component */}
-        <MontiqInfoModal 
-           activeModal={activeModal} 
-           onClose={() => setActiveModal(null)} 
-        />
-
+        <MontiqInfoModal activeModal={activeModal} onClose={() => setActiveModal(null)} />
         <MontiqFooter />
-        
       </div>
     </MontiqProvider>
   );

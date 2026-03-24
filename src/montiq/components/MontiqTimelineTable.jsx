@@ -12,12 +12,7 @@ export function MontiqTimelineTable() {
 
   return (
     <div className="glass-card mt-8 font-sans overflow-hidden transition-all duration-500">
-      
-      {/* Collapsible Header */}
-      <div 
-        onClick={() => setIsOpen(!isOpen)}
-        className="p-6 border-b border-black/5 dark:border-white/5 flex flex-wrap gap-4 justify-between items-center bg-white/40 dark:bg-black/20 cursor-pointer hover:bg-white/60 dark:hover:bg-white/5 transition-colors"
-      >
+      <div onClick={() => setIsOpen(!isOpen)} className="p-6 border-b border-black/5 dark:border-white/5 flex flex-wrap gap-4 justify-between items-center bg-white/40 dark:bg-black/20 cursor-pointer hover:bg-white/60 dark:hover:bg-white/5 transition-colors">
         <div className="flex items-center gap-3">
             <div className="p-2 bg-brand-blue/10 text-brand-blue rounded-lg">
                 <TableProperties size={20} />
@@ -32,7 +27,6 @@ export function MontiqTimelineTable() {
         </div>
       </div>
 
-      {/* Table Body */}
       <div className={clsx("grid transition-all duration-500 ease-out", isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
         <div className="overflow-hidden">
           <div className="overflow-x-auto max-h-[500px] custom-scrollbar">
@@ -42,6 +36,7 @@ export function MontiqTimelineTable() {
                   <th className="px-6 py-4">Year</th>
                   <th className="px-6 py-4">Monthly Draw</th> 
                   <th className="px-6 py-4 text-center">Nifty 50</th>
+                  <th className="px-6 py-4 text-brand-danger">LTCG Tax</th> {/* NEW HEADER */}
                   <th className="px-6 py-4 text-brand-purple">Equity Bucket</th>
                   <th className="px-6 py-4 text-brand-green">Cash Bucket</th>
                   <th className="px-6 py-4 text-brand-blue">Debt Bucket</th>
@@ -62,6 +57,10 @@ export function MontiqTimelineTable() {
                         <span className={clsx("px-2.5 py-1 rounded-full text-xs", row.nifty >= 0 ? "bg-brand-green/10 text-brand-green" : "bg-brand-danger/10 text-brand-danger")}>
                             {row.nifty >= 0 ? '+' : ''}{row.nifty.toFixed(2)}%
                         </span>
+                    </td>
+
+                    <td className="px-6 py-4 font-bold text-brand-danger opacity-90">
+                        {row.taxPaid > 0 ? `-${formatCurrency(row.taxPaid)}` : '₹0'}
                     </td>
 
                     <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300">

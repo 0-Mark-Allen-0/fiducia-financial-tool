@@ -7,9 +7,10 @@ export function SWPTable() {
   const { swpSeries } = dashboardData;
 
   const downloadCSV = () => {
+    // Dynamically expand headers based on Mode
     const headers = isProMode 
-        ? ["Year", "Monthly Withdrawal (Nominal)", "Monthly Withdrawal (Real)", "Est. Tax (Nominal)", "Portfolio Value (Nominal)", "Portfolio Value (Real)"]
-        : ["Year", "Monthly Withdrawal (Nominal)", "Monthly Withdrawal (Real)", "Portfolio Value (Nominal)", "Portfolio Value (Real)"];
+        ? ["Year", "Monthly Draw (Nominal)", "Monthly Draw (Real)", "Est. Tax", "Equity Bucket", "Debt Bucket", "Cash Bucket", "Portfolio (Nominal)", "Portfolio (Real)"]
+        : ["Year", "Monthly Draw (Nominal)", "Monthly Draw (Real)", "Portfolio (Nominal)", "Portfolio (Real)"];
     
     const rows = swpSeries.map(d => {
         const baseRow = [
@@ -18,7 +19,14 @@ export function SWPTable() {
             cleanForCSV(d.withdrawalMonthlyReal)
         ];
         
-        if (isProMode) baseRow.push(cleanForCSV(d.taxNominal));
+        if (isProMode) {
+            baseRow.push(
+               cleanForCSV(d.taxNominal),
+               cleanForCSV(d.eqNominal),
+               cleanForCSV(d.dbNominal),
+               cleanForCSV(d.csNominal)
+            );
+        }
         
         baseRow.push(cleanForCSV(d.portfolioNominal), cleanForCSV(d.portfolioReal));
         return baseRow;
@@ -59,10 +67,15 @@ export function SWPTable() {
           <thead className="text-xs text-slate-500 uppercase bg-slate-50/50 dark:bg-slate-900/50 sticky top-0 backdrop-blur-md z-10">
             <tr>
               <th className="px-6 py-4">Year</th>
-              <th className="px-6 py-4">Monthly Withdrawal</th> 
+              <th className="px-6 py-4">Monthly Draw</th> 
               
               {isProMode && (
-                  <th className="px-6 py-4 text-brand-danger">Est. Tax (Nominal)</th>
+                  <>
+                      <th className="px-6 py-4 text-brand-danger">Est. Tax</th>
+                      <th className="px-6 py-4 text-brand-purple">Equity</th>
+                      <th className="px-6 py-4 text-brand-blue">Debt</th>
+                      <th className="px-6 py-4 text-brand-green">Cash</th>
+                  </>
               )}
               
               <th className="px-6 py-4 text-slate-900 dark:text-white">Portfolio (Nominal)</th>
@@ -81,9 +94,20 @@ export function SWPTable() {
                     </td>
                     
                     {isProMode && (
-                        <td className="px-6 py-3 text-brand-danger/80">
-                            <div>{formatCurrency(row.taxNominal)}</div>
-                        </td>
+                        <>
+                            <td className="px-6 py-3 text-brand-danger/80">
+                                <div>{formatCurrency(row.taxNominal)}</div>
+                            </td>
+                            <td className="px-6 py-3 text-slate-600 dark:text-slate-400 font-medium">
+                                {formatUnit(row.eqNominal)}
+                            </td>
+                            <td className="px-6 py-3 text-slate-600 dark:text-slate-400 font-medium">
+                                {formatUnit(row.dbNominal)}
+                            </td>
+                            <td className="px-6 py-3 text-slate-600 dark:text-slate-400 font-medium">
+                                {formatUnit(row.csNominal)}
+                            </td>
+                        </>
                     )}
 
                     <td className="px-6 py-3 font-bold text-slate-900 dark:text-white">

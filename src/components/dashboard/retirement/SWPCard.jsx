@@ -5,7 +5,7 @@ import { formatCurrency, formatUnit } from '../../../utils/format';
 import { Coins, ChevronDown } from 'lucide-react';
 
 export function SWPCard() {
-  const { swpInput, setSwpInput, isProMode } = useFinancialData();
+  const { swpInput, setSwpInput, isProMode, dashboardData } = useFinancialData();
   const [isOpen, setIsOpen] = useState(false);
 
   const update = (field, val) => setSwpInput(prev => ({ ...prev, [field]: val }));
@@ -20,10 +20,12 @@ export function SWPCard() {
       return `${formatUnit(swpInput.corpus)} • ${mode}`;
   };
 
+  // NEW: Pull extracted bucket percentages
+  const buckets = dashboardData.swpBuckets || { equity: 100, debt: 0, cash: 0 };
+
   return (
     <div className="glass-card flex flex-col h-fit transition-all duration-300 ease-out border-brand-orange/20 shadow-brand-orange/5">
       
-      {/* HEADER */}
       <div 
         className="flex items-center justify-between cursor-pointer p-5 sm:p-6"
         onClick={() => setIsOpen(!isOpen)}
@@ -46,30 +48,44 @@ export function SWPCard() {
         </div>
       </div>
 
-      {/* FLUID ACCORDION ANIMATION */}
       <div className={`grid transition-all duration-300 ease-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
         <div className="overflow-hidden">
           <div className="px-5 sm:px-6 pb-5 sm:pb-6 flex flex-col pt-2 border-t border-black/5 dark:border-white/5 mt-2">
             
+            {/* NEW: Asset Mix Breakdown UI */}
+            {isProMode && (
+                <div className="mb-6 p-4 bg-slate-50 dark:bg-black/20 rounded-xl border border-slate-200 dark:border-white/5 animate-in fade-in duration-500">
+                    <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-3">Post-Accumulation Asset Mix</h4>
+                    <div className="flex gap-4">
+                        <div className="flex-1">
+                           <div className="text-brand-purple font-black text-sm">{buckets.equity.toFixed(1)}%</div>
+                           <div className="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Equity</div>
+                        </div>
+                        <div className="flex-1">
+                           <div className="text-brand-blue font-black text-sm">{buckets.debt.toFixed(1)}%</div>
+                           <div className="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Debt</div>
+                        </div>
+                        <div className="flex-1">
+                           <div className="text-brand-green font-black text-sm">{buckets.cash.toFixed(1)}%</div>
+                           <div className="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Cash</div>
+                        </div>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-4 pt-3 border-t border-slate-200/50 dark:border-white/10 leading-relaxed">
+                       * Withdrawals are drawn <strong>proportionally</strong> from all buckets. LTCG Tax is only applied to the Equity bucket's margin. To have greater control over strategies, please use <strong>Advanced</strong> mode.
+                    </p>
+                </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                    <InputGroup 
-                        label="Retirement Corpus (₹)" 
-                        value={swpInput.corpus} 
-                        onChange={(v) => update('corpus', v)} 
-                        isCurrency 
-                    />
+                    <InputGroup label="Retirement Corpus (₹)" value={swpInput.corpus} onChange={(v) => update('corpus', v)} isCurrency />
                 </div>
 
                 <InputGroup label="Return (%)" value={swpInput.returnRate} onChange={(v) => update('returnRate', v)} step="0.1" />
                 <InputGroup label="Inflation (%)" value={swpInput.inflation} onChange={(v) => update('inflation', v)} step="0.1" />
                 
                 <div className="col-span-2">
-                    <InputGroup 
-                        label="Withdrawal Duration (Yrs)" 
-                        value={swpInput.horizon} 
-                        onChange={(v) => update('horizon', v)} 
-                    />
+                    <InputGroup label="Withdrawal Duration (Yrs)" value={swpInput.horizon} onChange={(v) => update('horizon', v)} />
                 </div>
                 
                 <div className="col-span-2">
@@ -101,14 +117,13 @@ export function SWPCard() {
                     )}
                 </div>
 
-                {/* PRO MODE ONLY: Tax Estimation Inputs */}
                 {isProMode && (
                     <>
                         <InputGroup 
                             label="Profit Ratio (%)" 
                             value={swpInput.gainProp} 
                             onChange={(v) => update('gainProp', v)} 
-                            tooltip="% of your corpus that is pure profit (interest/gains)"
+                            tooltip="% of the Equity withdrawal that is pure profit"
                         />
                         <InputGroup 
                             label="LTCG Tax (%)" 

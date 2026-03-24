@@ -5,10 +5,8 @@ const MontiqContext = createContext();
 export const useMontiqData = () => useContext(MontiqContext);
 
 export const MontiqProvider = ({ children }) => {
-  // NEW: Track the absolute total corpus
-  const [startingCorpus, setStartingCorpus] = useState(20000000); // Default 2 Cr
+  const [startingCorpus, setStartingCorpus] = useState(20000000); 
 
-  // Percentage sliders mapping (must equal 100%)
   const [allocation, setAllocation] = useState({
     equity: 60,
     debt: 30,
@@ -21,10 +19,14 @@ export const MontiqProvider = ({ children }) => {
     guaranteedIncome: 0    
   });
 
+  // NEW: Store one-time retirement shocks
+  const [retirementEvents, setRetirementEvents] = useState([]);
+
   const [retirementHorizon, setRetirementHorizon] = useState(30);
 
+  // UPGRADED: Replaced useBucket with withdrawalSequence
   const [strategies, setStrategies] = useState({
-    useBucket: false,
+    withdrawalSequence: 'proportional', // 'proportional', 'equity-first', 'debt-first', 'dynamic-bucket'
     bucketYears: 3, 
     useGuardrails: false,
     guardrailCut: 10, 
@@ -36,7 +38,6 @@ export const MontiqProvider = ({ children }) => {
 
   const [simulationResults, setSimulationResults] = useState(null);
 
-  // HYDRATION: The Fiducia Bridge
   useEffect(() => {
     const fiduciaExport = localStorage.getItem('fiducia_export_v1');
     if (fiduciaExport) {
@@ -66,6 +67,7 @@ export const MontiqProvider = ({ children }) => {
     startingCorpus, setStartingCorpus,
     allocation, setAllocation,
     expenses, setExpenses,
+    retirementEvents, setRetirementEvents, // NEW
     retirementHorizon, setRetirementHorizon,
     strategies, setStrategies,
     simulationResults, setSimulationResults

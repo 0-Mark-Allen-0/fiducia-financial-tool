@@ -17,7 +17,7 @@ export function MontiqHeader() {
                   Beta
               </span>
             </div>
-            <span className="text-[10px] font-bold text-brand-green uppercase leading-none">v1.0</span>
+            <span className="text-[10px] font-bold text-brand-green uppercase leading-none">v2.0</span>
           </div>
         </div>
       </div>

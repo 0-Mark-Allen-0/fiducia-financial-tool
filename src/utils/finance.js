@@ -397,10 +397,13 @@ export const calculateInvestment = ({
 };
 /**
  * 4. SWP ENGINE (RETIREMENT)
- * Unchanged. Operates on the final corpus value after the accumulation phase.
+ * UPGRADED: Now uses a Proportional Multi-Bucket strategy to isolate LTCG tax solely to the Equity bucket.
  */
 export const calculateSWP = ({
   corpus,
+  eqPct = 1,
+  dbPct = 0,
+  csPct = 0,
   method, 
   val,    
   returnRate,
@@ -409,7 +412,10 @@ export const calculateSWP = ({
   ltcgRate,
   gainProp
 }) => {
-  let portfolio = corpus;
+  let currentEq = corpus * eqPct;
+  let currentDb = corpus * dbPct;
+  let currentCs = corpus * csPct;
+  
   let monthlyRate = returnRate / 12 / 100;
   let series = [];
 
@@ -418,38 +424,83 @@ export const calculateSWP = ({
     : val;
 
   let currentMonthly = startMonthly;
+  
+  // The effective tax rate applied only to equity (e.g., 63% profit * 12.5% LTCG)
+  let effectiveTaxRate = (gainProp / 100) * (ltcgRate / 100);
 
   for (let y = 1; y <= years; y++) {
     if (y > 1) currentMonthly *= (1 + (inflationRate / 100));
 
-    let yearlyWithdrawal = currentMonthly * 12;
     let yearlyTax = 0;
 
     for (let m = 1; m <= 12; m++) {
-        if (portfolio > 0) {
-            let taxablePortion = currentMonthly * (gainProp / 100);
-            let tax = taxablePortion * (ltcgRate / 100);
-            yearlyTax += tax;
+        let remaining = currentMonthly;
+        let tot = currentEq + currentDb + currentCs;
+        
+        if (tot > 0) {
+            // Calculate Proportional Drain
+            let eqTargetNet = remaining * (currentEq / tot);
+            let dbTake = Math.min(currentDb, remaining * (currentDb / tot));
+            let csTake = Math.min(currentCs, remaining * (currentCs / tot));
 
-            portfolio -= currentMonthly;
-            portfolio *= (1 + monthlyRate);
+            // Gross up the Equity take to cover the LTCG tax
+            let eqRequiredGross = eqTargetNet / (1 - effectiveTaxRate);
+            let actualEqGrossTake = Math.min(currentEq, eqRequiredGross);
+            let actualEqNetTake = actualEqGrossTake * (1 - effectiveTaxRate);
+            let taxPaid = actualEqGrossTake - actualEqNetTake;
+
+            currentEq -= actualEqGrossTake;
+            currentDb -= dbTake;
+            currentCs -= csTake;
+            
+            yearlyTax += taxPaid;
+            remaining -= (actualEqNetTake + dbTake + csTake);
+            
+            // Fallback (If buckets run dry mid-month, drain whatever is left sequentially)
+            const takeFrom = (bucket) => {
+                if (remaining <= 0.01) return;
+                if (bucket === 'cash') {
+                    let take = Math.min(currentCs, remaining); currentCs -= take; remaining -= take;
+                } else if (bucket === 'debt') {
+                    let take = Math.min(currentDb, remaining); currentDb -= take; remaining -= take;
+                } else if (bucket === 'equity') {
+                    let requiredGross = remaining / (1 - effectiveTaxRate);
+                    let actualGross = Math.min(currentEq, requiredGross);
+                    let actualNet = actualGross * (1 - effectiveTaxRate);
+                    currentEq -= actualGross;
+                    yearlyTax += (actualGross - actualNet);
+                    remaining -= actualNet;
+                }
+            };
+            
+            takeFrom('cash'); takeFrom('debt'); takeFrom('equity');
+            
+            // Apply monthly growth to the remaining balances
+            currentEq *= (1 + monthlyRate);
+            currentDb *= (1 + monthlyRate);
+            currentCs *= (1 + monthlyRate);
         }
     }
     
-    if (portfolio < 0) portfolio = 0;
-
+    // Floor check
+    currentEq = Math.max(0, currentEq);
+    currentDb = Math.max(0, currentDb);
+    currentCs = Math.max(0, currentCs);
+    
+    let portfolio = currentEq + currentDb + currentCs;
     let infFactor = getInfFactor(inflationRate, y);
 
     series.push({
       year: y,
       withdrawalMonthlyNominal: currentMonthly,
       withdrawalMonthlyReal: currentMonthly / infFactor,
-      
       taxNominal: yearlyTax,
       taxReal: yearlyTax / infFactor,
-      
       portfolioNominal: portfolio,
-      portfolioReal: portfolio / infFactor
+      portfolioReal: portfolio / infFactor,
+      eqNominal: currentEq, // Exported for the Data Table
+      dbNominal: currentDb, // Exported for the Data Table
+      csNominal: currentCs  // Exported for the Data Table
     });
 
     if (portfolio <= 0) break;

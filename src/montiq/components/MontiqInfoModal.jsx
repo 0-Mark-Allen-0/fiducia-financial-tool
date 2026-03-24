@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Info, Droplets, ShieldAlert, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { X, Info, ShieldAlert, TrendingUp, CheckCircle2, ArrowDownUp, Zap, Calculator } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export function MontiqInfoModal({ activeModal, onClose }) {
@@ -27,16 +27,17 @@ export function MontiqInfoModal({ activeModal, onClose }) {
         <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">This section establishes the absolute baseline of your retirement plan.</p>
         <ul className="space-y-4 mt-3 text-sm text-slate-600 dark:text-slate-300">
           <li><strong className="text-slate-900 dark:text-white">Starting Corpus:</strong> The total liquid nest egg you are bringing into retirement.</li>
+          
           <li className="bg-slate-50 dark:bg-white/5 p-4 rounded-xl border border-slate-200 dark:border-white/5">
              <strong className="text-slate-900 dark:text-white block mb-2">Asset Mix:</strong>
              <ul className="space-y-3">
                <li className="flex items-start gap-2">
                    <div className="w-2 h-2 rounded-full bg-brand-purple mt-1.5 shrink-0"></div>
-                   <div><span className="text-brand-purple font-bold">Equity:</span> High growth, but high volatility. Assumes a 12.5% LTCG tax drag.</div>
+                   <div><span className="text-brand-purple font-bold">Equity:</span> High growth, but high volatility. Taxed at 12.5% LTCG upon withdrawal.</div>
                </li>
                <li className="flex items-start gap-2">
                    <div className="w-2 h-2 rounded-full bg-brand-blue mt-1.5 shrink-0"></div>
-                   <div><span className="text-brand-blue font-bold">Debt:</span> Stable yield, lower growth. Assumes a standard 30% slab tax drag.</div>
+                   <div><span className="text-brand-blue font-bold">Debt:</span> Stable yield, lower growth. Assumes a standard 30% slab tax drag built into the return.</div>
                </li>
                <li className="flex items-start gap-2">
                    <div className="w-2 h-2 rounded-full bg-brand-green mt-1.5 shrink-0"></div>
@@ -44,7 +45,13 @@ export function MontiqInfoModal({ activeModal, onClose }) {
                </li>
              </ul>
           </li>
+
           <li><strong className="text-slate-900 dark:text-white">Monthly Lifestyle:</strong> Splitting your expenses into <em>Essential</em> (must-haves) and <em>Discretionary</em> (nice-to-haves) allows the engine to dynamically cut your spending during market crashes if you activate Guardrails.</li>
+          
+          <li className="bg-brand-orange/5 p-4 rounded-xl border border-brand-orange/20">
+             <strong className="text-brand-orange flex items-center gap-2 mb-1"><Zap size={16}/> One-Time Shocks:</strong>
+             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">Model massive post-retirement expenses (like weddings, property, or medical emergencies) in <em>today's money</em>. The engine auto-inflates these costs to the exact year they happen. These massive outflows are the primary triggers for Sequence of Returns Risk.</p>
+          </li>
         </ul>
       </div>
     );
@@ -56,8 +63,14 @@ export function MontiqInfoModal({ activeModal, onClose }) {
         
         <div className="space-y-3 mt-4">
           <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-xl border border-slate-200 dark:border-white/5">
-            <strong className="text-brand-blue flex items-center gap-2 mb-1"><Droplets size={16}/> Cash Bucketing</strong> 
-            <p className="text-xs leading-relaxed">If the market crashes, the engine stops selling your Equity at a loss. It drains your Cash buffer instead, giving your investments time to recover.</p>
+            <strong className="text-brand-blue flex items-center gap-2 mb-2"><ArrowDownUp size={16}/> Withdrawal Sequence</strong> 
+            <p className="text-xs leading-relaxed mb-2">Dictates which assets are sold first to fund your lifestyle and shocks:</p>
+            <ul className="text-xs space-y-2 ml-2 border-l-2 border-brand-blue/20 pl-3 text-slate-500 dark:text-slate-400">
+                <li><strong className="text-slate-700 dark:text-slate-300">Proportional:</strong> Drains all buckets evenly based on their current weight.</li>
+                <li><strong className="text-slate-700 dark:text-slate-300">Equity First:</strong> Burns volatile assets first, protecting safe assets.</li>
+                <li><strong className="text-slate-700 dark:text-slate-300">Debt First:</strong> Protects growth early in retirement (Bond Tent strategy).</li>
+                <li><strong className="text-slate-700 dark:text-slate-300">Dynamic Bucketing:</strong> Drains Cash/Debt during market crashes to protect Equity. During Bull markets, it uses Equity to refill your Cash buffer.</li>
+            </ul>
           </div>
           
           <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-xl border border-slate-200 dark:border-white/5">
@@ -66,7 +79,7 @@ export function MontiqInfoModal({ activeModal, onClose }) {
           </div>
           
           <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-xl border border-slate-200 dark:border-white/5">
-            <strong className="text-brand-orange flex items-center gap-2 mb-1"><TrendingUp size={16}/> Equity Glidepath (Bond Tent)</strong> 
+            <strong className="text-brand-orange flex items-center gap-2 mb-1"><TrendingUp size={16}/> Equity Glidepath</strong> 
             <p className="text-xs leading-relaxed">Start retirement heavily in safe Debt. Over time, slowly sell Debt to buy Equity, ensuring you have the growth needed to survive late-stage inflation.</p>
           </div>
         </div>
@@ -75,7 +88,7 @@ export function MontiqInfoModal({ activeModal, onClose }) {
            <Info className="text-brand-danger shrink-0 mt-0.5" size={18} />
            <div>
              <strong className="text-brand-danger text-xs uppercase tracking-wider block mb-1">Important Logic Rule</strong>
-             <p className="text-xs text-brand-danger/80 leading-relaxed">Cash Bucketing and Equity Glidepaths are mutually exclusive. You cannot spend down your safe cash while simultaneously trying to buy more equity!</p>
+             <p className="text-xs text-brand-danger/80 leading-relaxed">Equity Glidepaths are only available when using the <strong>Proportional</strong> withdrawal sequence. You cannot automatically rebalance to a target equity percentage if your strategy forces you to drain buckets completely out of order!</p>
            </div>
         </div>
       </div>
@@ -84,8 +97,18 @@ export function MontiqInfoModal({ activeModal, onClose }) {
     title = "Stochastic Projections";
     content = (
       <div className="space-y-4 text-sm text-slate-600 dark:text-slate-300">
-        <p className="leading-relaxed">We run your portfolio through <strong>1,000 alternate lifetimes</strong> using actual historical Nifty 50 and Bond yields to find your true probability of success. The annual growth and inflation values are pulled from Nifty 50 and CPI, respectively.</p>
+        <p className="leading-relaxed">We run your portfolio through <strong>1,000 alternate lifetimes</strong> using actual historical Nifty 50 and Bond yields to find your true probability of success. The annual growth and inflation values are pulled directly from historical Indian market data.</p>
         
+        <div className="p-4 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-xl mt-4 flex gap-3 items-start">
+           <Calculator className="text-brand-purple shrink-0 mt-0.5" size={18} />
+           <div>
+             <strong className="text-slate-900 dark:text-white text-xs uppercase tracking-wider block mb-1">Hyper-Realistic Taxation</strong>
+             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                 When you withdraw from Equity, the engine assumes you are selling a mature portfolio where <strong>63% of the withdrawal is pure capital gains</strong>. It automatically "grosses up" your withdrawal to pay the 12.5% LTCG tax, showing you exactly how much wealth is lost to tax drag in the <em>Median Lifetime Ledger</em>.
+             </p>
+           </div>
+        </div>
+
         <div className="space-y-3 mt-4">
            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-white/5">
               <strong className="text-brand-green flex items-center gap-2"><div className="w-4 h-0 border-t-2 border-dashed border-brand-green"></div> Top 10% (The Dream)</strong>

@@ -3,13 +3,14 @@ import { HISTORICAL_MARKET_DATA } from '../utils/historicalData';
 const getRandomInt = (max) => Math.floor(Math.random() * max);
 
 export const runMonteCarlo = (contextData, iterations = 1000) => {
-    const { startingCorpus, allocation, expenses, strategies, retirementHorizon } = contextData;
+    const { startingCorpus, allocation, expenses, strategies, retirementHorizon, retirementEvents } = contextData;
 
     let timelines = [];
     let successCount = 0;
 
-    // The baseline purchasing power the user expects today
     const baselineMonthlyDraw = (expenses.essential + expenses.discretionary) - expenses.guaranteedIncome;
+    // THE TAX RULE: 12.5% LTCG applied to 63% of the withdrawn amount.
+    const effectiveEquityTaxRate = 0.63 * 0.125; 
 
     for (let i = 0; i < iterations; i++) {
         let currentEquity = startingCorpus * (allocation.equity / 100);
@@ -19,9 +20,11 @@ export const runMonteCarlo = (contextData, iterations = 1000) => {
         let ess = expenses.essential * 12;
         let disc = expenses.discretionary * 12;
         let guar = expenses.guaranteedIncome * 12;
+        
+        let cumulativeInflation = 1;
 
         let timeline = [];
-        let detailedTimeline = []; // NEW: Array to hold granular table data
+        let detailedTimeline = []; 
 
         for (let y = 1; y <= retirementHorizon; y++) {
             const market = HISTORICAL_MARKET_DATA[getRandomInt(HISTORICAL_MARKET_DATA.length)];
@@ -30,13 +33,8 @@ export const runMonteCarlo = (contextData, iterations = 1000) => {
             if (totalPortfolio <= 0) {
                 timeline.push(0);
                 detailedTimeline.push({
-                    yearLabel: `Year ${y}`,
-                    nifty: market.equity,
-                    drawNominal: 0,
-                    drawReal: 0,
-                    equity: 0,
-                    debt: 0,
-                    cash: 0
+                    yearLabel: `Year ${y}`, nifty: market.equity, drawNominal: 0, drawReal: 0,
+                    taxPaid: 0, equity: 0, debt: 0, cash: 0
                 });
                 continue;
             }
@@ -50,45 +48,114 @@ export const runMonteCarlo = (contextData, iterations = 1000) => {
             }
 
             let withdrawalNeed = Math.max(0, (ess + actualDisc) - guar);
+            let totalNominalDrawThisYear = withdrawalNeed; 
+            let totalTaxPaidThisYear = 0;
 
-            if (strategies.useBucket) {
-                if (market.equity < 0) {
-                    if (currentCash >= withdrawalNeed) {
-                        currentCash -= withdrawalNeed;
-                    } else {
-                        let rem = withdrawalNeed - currentCash;
-                        currentCash = 0;
-                        if (currentDebt >= rem) {
-                            currentDebt -= rem;
-                        } else {
-                            rem -= currentDebt;
-                            currentDebt = 0;
-                            currentEquity -= rem; 
-                        }
-                    }
-                } else {
-                    let targetCash = (ess + actualDisc - guar) * strategies.bucketYears;
-                    currentEquity -= withdrawalNeed;
+            // --- THE TAX-AWARE CASCADING DRAIN HELPER ---
+            const drain = (amount, preference) => {
+                let remaining = amount;
+                
+                const takeFrom = (bucket) => {
+                    if (remaining <= 0) return;
                     
+                    if (bucket === 'equity') {
+                        // Gross up the withdrawal to cover the tax bill
+                        let requiredGross = remaining / (1 - effectiveEquityTaxRate);
+                        
+                        if (currentEquity >= requiredGross) {
+                            currentEquity -= requiredGross;
+                            totalTaxPaidThisYear += (requiredGross - remaining);
+                            remaining = 0;
+                        } else {
+                            // If equity is too low, drain it entirely and pay whatever tax is due
+                            let grossTake = currentEquity;
+                            let taxPaid = grossTake * effectiveEquityTaxRate;
+                            let netTake = grossTake - taxPaid;
+                            
+                            currentEquity = 0;
+                            totalTaxPaidThisYear += taxPaid;
+                            remaining -= netTake;
+                        }
+                    } else if (bucket === 'debt') {
+                        let take = Math.min(currentDebt, remaining);
+                        currentDebt -= take;
+                        remaining -= take;
+                    } else if (bucket === 'cash') {
+                        let take = Math.min(currentCash, remaining);
+                        currentCash -= take;
+                        remaining -= take;
+                    }
+                };
+
+                if (preference === 'equity') { takeFrom('equity'); takeFrom('debt'); takeFrom('cash'); }
+                else if (preference === 'debt') { takeFrom('debt'); takeFrom('cash'); takeFrom('equity'); }
+                else if (preference === 'cash') { takeFrom('cash'); takeFrom('debt'); takeFrom('equity'); }
+                else { 
+                    let tot = currentEquity + currentDebt + currentCash;
+                    if (tot > 0) {
+                        let eqTargetNet = remaining * (currentEquity / tot);
+                        let dbTake = Math.min(currentDebt, remaining * (currentDebt / tot));
+                        let csTake = Math.min(currentCash, remaining * (currentCash / tot));
+                        
+                        let eqRequiredGross = eqTargetNet / (1 - effectiveEquityTaxRate);
+                        let actualEqGrossTake = Math.min(currentEquity, eqRequiredGross);
+                        let actualEqNetTake = actualEqGrossTake * (1 - effectiveEquityTaxRate);
+                        let taxPaid = actualEqGrossTake - actualEqNetTake;
+
+                        currentEquity -= actualEqGrossTake;
+                        currentDebt -= dbTake;
+                        currentCash -= csTake;
+                        
+                        totalTaxPaidThisYear += taxPaid;
+                        remaining -= (actualEqNetTake + dbTake + csTake);
+                        
+                        if (remaining > 0.1) { takeFrom('cash'); takeFrom('debt'); takeFrom('equity'); }
+                    }
+                }
+            };
+
+            const eventsThisYear = retirementEvents.filter(e => Number(e.year) === y);
+            eventsThisYear.forEach(e => {
+                let inflatedCost = e.amount * cumulativeInflation;
+                totalNominalDrawThisYear += inflatedCost;
+                drain(inflatedCost, e.target);
+            });
+
+            if (strategies.withdrawalSequence === 'dynamic-bucket') {
+                if (market.equity < 0) {
+                    drain(withdrawalNeed, 'cash');
+                } else {
+                    drain(withdrawalNeed, 'proportional');
+                    let targetCash = (ess + actualDisc - guar) * strategies.bucketYears;
                     if (currentCash < targetCash) {
-                        let refillAmount = targetCash - currentCash;
-                        if (currentEquity > refillAmount) {
-                            currentEquity -= refillAmount;
-                            currentCash += refillAmount;
+                        let refill = targetCash - currentCash;
+                        let growthAssets = currentEquity + currentDebt;
+                        
+                        if (growthAssets > 0) {
+                            let eqRefillNet = refill * (currentEquity / growthAssets);
+                            let dbTake = Math.min(currentDebt, refill * (currentDebt / growthAssets));
+                            
+                            let eqRequiredGross = eqRefillNet / (1 - effectiveEquityTaxRate);
+                            let actualEqGrossTake = Math.min(currentEquity, eqRequiredGross);
+                            let actualEqNetTake = actualEqGrossTake * (1 - effectiveEquityTaxRate);
+                            let taxPaid = actualEqGrossTake - actualEqNetTake;
+
+                            currentEquity -= actualEqGrossTake;
+                            currentDebt -= dbTake;
+                            currentCash += (actualEqNetTake + dbTake);
+                            totalTaxPaidThisYear += taxPaid;
                         }
                     }
                 }
-            } else {
-                currentEquity -= withdrawalNeed * (allocation.equity / 100);
-                currentDebt -= withdrawalNeed * (allocation.debt / 100);
-                currentCash -= withdrawalNeed * (allocation.cash / 100);
-            }
+            } else if (strategies.withdrawalSequence === 'equity-first') { drain(withdrawalNeed, 'equity'); } 
+              else if (strategies.withdrawalSequence === 'debt-first') { drain(withdrawalNeed, 'debt'); } 
+              else { drain(withdrawalNeed, 'proportional'); }
 
             currentEquity = Math.max(0, currentEquity);
             currentDebt = Math.max(0, currentDebt);
             currentCash = Math.max(0, currentCash);
 
-            if (strategies.useGlidepath && !strategies.useBucket && y <= strategies.glideYears) {
+            if (strategies.useGlidepath && strategies.withdrawalSequence === 'proportional' && y <= strategies.glideYears) {
                 let step = (strategies.glideTargetEquity - allocation.equity) / strategies.glideYears;
                 let newTargetEq = allocation.equity + (step * y);
                 
@@ -110,35 +177,30 @@ export const runMonteCarlo = (contextData, iterations = 1000) => {
             totalPortfolio = currentEquity + currentDebt + currentCash;
             timeline.push(totalPortfolio > 0 ? totalPortfolio : 0);
 
-            // NEW: Record granular data for the table
             detailedTimeline.push({
                 yearLabel: `Year ${y}`,
                 nifty: market.equity,
-                drawNominal: withdrawalNeed / 12,
-                drawReal: baselineMonthlyDraw, // The purchasing power they actually felt
+                drawNominal: totalNominalDrawThisYear / 12, 
+                drawReal: baselineMonthlyDraw, 
+                taxPaid: totalTaxPaidThisYear, // NEW EXPORT
                 equity: currentEquity,
                 debt: currentDebt,
                 cash: currentCash
             });
 
             let inf = market.inflation / 100;
+            cumulativeInflation *= (1 + inf);
             ess *= (1 + inf);
             disc *= (1 + inf);
             guar *= (1 + inf);
         }
 
-        if (timeline[retirementHorizon - 1] > 0) {
-            successCount++;
-        }
-        
-        // Push the full object containing both the simple array (for chart) and detailed array (for table)
+        if (timeline[retirementHorizon - 1] > 0) successCount++;
         timelines.push({ finalTotal: timeline[retirementHorizon - 1], rawArray: timeline, details: detailedTimeline });
     }
 
-    // Sort all timelines by their final portfolio value to find the true percentiles
     timelines.sort((a, b) => a.finalTotal - b.finalTotal);
 
-    // Extract the specific timeline that represents the 50th percentile (Median)
     const medianRunIndex = Math.floor(iterations * 0.50);
     const medianRunDetails = timelines[medianRunIndex].details;
 
@@ -156,6 +218,6 @@ export const runMonteCarlo = (contextData, iterations = 1000) => {
     return {
         successRate: ((successCount / iterations) * 100).toFixed(1),
         percentiles,
-        medianRunDetails // NEW: Exporting the representative table data
+        medianRunDetails 
     };
 };
